@@ -68,19 +68,23 @@ contract NativeTokenManager {
     function bidNewToken(Bid memory bid) public payable {
         // pre check
         if (nativeTokens[bid.tokenId].owner != address(0)) {
-            revert();
+            revert("tokenId has been auctioned off.");
         }
-        require(now < newTokenAuction.endTime);
-        require(bid.newTokenPrice >= newTokenAuction.minBid.newTokenPrice);
+        require(now < newTokenAuction.endTime, "Auction has ended.");
+        require(
+            bid.newTokenPrice >= newTokenAuction.minBid.newTokenPrice,
+            "Bid price should be larger than minimum bid price."
+        );
         require(
             bid.newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
-                                 newTokenAuction.minIncrement
+                                 newTokenAuction.minIncrement,
+            "Bid price should be larger than current highest bid."
         );
 
         address bidder = msg.sender;
         // bid(newTokenAuction, bid, bidder);
         newTokenAuctionBalance[bidder] += msg.value;
-        require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice);
+        require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
@@ -91,7 +95,7 @@ contract NativeTokenManager {
     }
 
     function newTokenAuctionEnd() public {
-        require(now >= newTokenAuction.endTime);
+        require(now >= newTokenAuction.endTime, "Auction hasn't ended.");
         Bid memory highestBid = newTokenAuction.highestBid;
         // TODO:
         // 1. deduct bid price from balance
@@ -100,19 +104,25 @@ contract NativeTokenManager {
     }
 
     function mintNewToken(uint256 tokenId) public {
-        require(msg.sender == nativeTokens[tokenId].owner);
+        require(msg.sender == nativeTokens[tokenId].owner, "Only the owner can mint new token.");
         // TODO
     }
 
     function transferOwnership(uint256 tokenId, address newOwner) public payable {
-        require(msg.sender == nativeTokens[tokenId].owner);
+        require(
+            msg.sender == nativeTokens[tokenId].owner,
+            "Only the owner can transfer ownership."
+        );
         nativeTokens[tokenId].owner = newOwner;
     }
 
     function withdrawTokenBid() public {
         // Those doesn't win the bid should be able to get back their funds
         // Note: losing bidders may withdraw their funds at any time, even before the action is over
-        require(msg.sender != newTokenAuction.highestBidder);
+        require(
+            msg.sender != newTokenAuction.highestBidder,
+            "Highest bidder cannot withdraw balance till the end of this auction."
+        );
         // uint256 amount = nativeTokenBalances[msg.sender];
         // nativeTokenBalances[msg.sender] = 0;
         // msg.sender.transfer(amount);
