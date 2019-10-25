@@ -68,7 +68,7 @@ contract NativeTokenManager {
     function bidNewToken(Bid memory bid) public payable {
         // pre check
         if (nativeTokens[bid.tokenId].owner != address(0)) {
-            revert("tokenId has been auctioned off.");
+            revert("Token ID has been auctioned off.");
         }
         require(now < newTokenAuction.endTime, "Auction has ended.");
         require(
