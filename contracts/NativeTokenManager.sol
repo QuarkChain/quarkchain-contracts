@@ -1,6 +1,7 @@
 pragma solidity >0.4.99 <0.6.0;
 pragma experimental ABIEncoderV2;
 
+
 contract NativeTokenManager {
 
     struct Fraction {
@@ -46,8 +47,16 @@ contract NativeTokenManager {
     mapping (uint256 => mapping (address => uint)) gasReserveAuctionBalance;
     mapping (address => mapping (uint256 => uint)) nativeTokenBalances;
 
-    constructor() public {
-        // TODO
+    constructor (
+        uint256 _minTokenAuctionPrice,
+        uint256 _minIncrement,
+        uint256 _overtimePeriod,
+        uint256 _overtimeLimit
+    ) public {
+        newTokenAuction.minBid.newTokenPrice = _minTokenAuctionPrice;
+        newTokenAuction.minIncrement = _minIncrement;
+        newTokenAuction.overtimePeriod = _overtimePeriod;
+        newTokenAuction.overtimeLimit = _overtimeLimit;
     }
 
     function newTokenAuctionStart() public {
@@ -58,10 +67,15 @@ contract NativeTokenManager {
 
     function bidNewToken(Bid memory bid) public payable {
         // pre check
-        if (checkKeyExist(bid.tokenId, nativeTokens)) revert();
+        if (nativeTokens[bid.tokenId].owner != address(0)) {
+            revert();
+        }
         require(now < newTokenAuction.endTime);
         require(bid.newTokenPrice >= newTokenAuction.minBid.newTokenPrice);
-        require(bid.newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder]+newTokenAuction.minIncrement);
+        require(
+            bid.newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
+                                 newTokenAuction.minIncrement
+        );
 
         address bidder = msg.sender;
         // bid(newTokenAuction, bid, bidder);
@@ -71,7 +85,9 @@ contract NativeTokenManager {
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
 
-        newTokenAuction.endTime = min(now + newTokenAuction.overtimePeriod, newTokenAuction.hardEndTime);
+        newTokenAuction.endTime = min(
+            now + newTokenAuction.overtimePeriod, newTokenAuction.hardEndTime
+        );
     }
 
     function newTokenAuctionEnd() public {
@@ -124,17 +140,19 @@ contract NativeTokenManager {
         transferMNT(uint256(msg.sender), tokenId, amount);
     }
 
-    function transferMNT(uint256 addr, uint256 token_id, uint256 value) public returns(uint p) {
-       uint256[3] memory input;
-       input[0] = addr;
-       input[1] = token_id;
-       input[2] = value;
-       assembly {
-           if iszero(call(not(0), 0x514b430002, 0, input, 0x60, p, 0x20)){
-               revert(0, 0)
-           }
-       }
-   }
+    function transferMNT(uint256 addr, uint256 tokenId, uint256 value) public returns(uint p) {
+        uint256[3] memory input;
+        input[0] = addr;
+        input[1] = tokenId;
+        input[2] = value;
+
+        /* solium-disable-next-line */
+        assembly {
+            if iszero(call(not(0), 0x514b430002, 0, input, 0x60, p, 0x20)){
+                revert(0, 0)
+            }
+        }
+    }
 
     function getUtilityInfo(uint256 tokenId) public view returns (uint256, uint256) {
         Auction memory auction = gasReserveAuctions[tokenId];
@@ -165,10 +183,6 @@ contract NativeTokenManager {
         return (gasAmount);
     }
 
-    function checkKeyExist(uint256 key, mapping (uint256 => NativeToken) storage tokens) internal pure returns (bool) {
-        // TODO
-    }
-
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
@@ -178,17 +192,19 @@ contract NativeTokenManager {
         Bid memory bid,
         address bidder,
         mapping (address => uint) storage balance
-    ) private returns (bool success) {
+    )
+        private returns (bool success)
+    {
     	// make sure balances have been updated
     	// compare with auction’s highest bid
         // preCheck();
-    	Bid memory highestBid = auction.highestBid;
-    	require(_compareBid(highestBid, bid));
+        Bid memory highestBid = auction.highestBid;
+        require(_compareBid(highestBid, bid));
         // balance[bid.tokenId] += bid.reserve;
-    	auction.highestBidder = bidder;
-    	auction.highestBid = bid;
+        auction.highestBidder = bidder;
+        auction.highestBid = bid;
 
-    	return true;
+        return true;
     }
 
     function _compareBid(Bid memory highestBid, Bid memory currentBid) private view returns (bool) {
@@ -199,8 +215,14 @@ contract NativeTokenManager {
         // Avoid overflow of uint256
         uint256 leftItem = highestBid.exchangeRate.numerator * currentBid.exchangeRate.denominator;
         uint256 rightItem = currentBid.exchangeRate.numerator * highestBid.exchangeRate.denominator;
-        require(leftItem >= highestBid.exchangeRate.numerator && leftItem >= currentBid.exchangeRate.denominator);
-        require(rightItem >= currentBid.exchangeRate.numerator && rightItem >= highestBid.exchangeRate.denominator);
+        require(
+            leftItem >= highestBid.exchangeRate.numerator &&
+            leftItem >= currentBid.exchangeRate.denominator
+        );
+        require(
+            rightItem >= currentBid.exchangeRate.numerator &&
+            rightItem >= highestBid.exchangeRate.denominator
+        );
         return (leftItem > rightItem);
     }
 }
