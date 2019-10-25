@@ -14,7 +14,6 @@ contract NativeTokenManager {
         uint256 newTokenPrice;
         // gas reserve
         Fraction exchangeRate;
-        uint256 reserve;
     }
 
     struct Auction {
@@ -102,20 +101,31 @@ contract NativeTokenManager {
         // msg.sender.transfer(amount);
     }
     
-    function bidUtility(Bid memory currentBid) public payable {
-        require(currentBid.reserve == msg.value);
-        require(currentBid.exchangeRate.denominator > 0);
-        require(currentBid.exchangeRate.numerator > 0);
+    function proposeNewExchangeRate(uint256 tokenId, uint256 rateNumerator, uint256 rateDenominator) public payable {
+        require(rateNumerator < 10^21);
+        require(rateNumerator > 0);
+        require(rateDenominator > 0);
+        Fraction memory exchangeRate;
+        exchangeRate.numerator = rateNumerator;
+        exchangeRate.denominator = rateDenominator;
+        Bid memory currentBid;
+        currentBid.tokenId = tokenId;
+        currentBid.exchangeRate = exchangeRate;
+
         Auction storage auction = gasReserveAuctions[currentBid.tokenId];
         mapping (address => uint) storage balance = gasReserveAuctionBalance[currentBid.tokenId];
-        bid(auction, currentBid, msg.sender, balance);
-        gasReserveAuctionBalance[currentBid.tokenId][msg.sender] += msg.value;
+        
+        Bid memory highestBid = auction.highestBid;
+    	require(compareBid(highestBid, currentBid, auction.highestBidder));
+        balance[msg.sender] += msg.value;
+    	auction.highestBidder = msg.sender;
+    	auction.highestBid = currentBid;
     }
 
-    function withdrawUtilityReserve(uint256 tokenId) public {
+    function withdrawGasReserve(uint256 tokenId) public {
         require(msg.sender != gasReserveAuctions[tokenId].highestBidder);
         uint256 amount = gasReserveAuctionBalance[tokenId][msg.sender];
-        gasReserveAuctionBalance[tokenId][msg.sender] -= amount;
+        gasReserveAuctionBalance[tokenId][msg.sender] = 0;
         msg.sender.transfer(amount);
     }
 
@@ -123,7 +133,7 @@ contract NativeTokenManager {
         uint256 amount = nativeTokenBalances[tokenId][msg.sender];
         require(amount > 0);
         // Transfer native token
-        nativeTokenBalances[tokenId][msg.sender] -= amount;
+        nativeTokenBalances[tokenId][msg.sender] = 0;
         transferMNT(uint256(msg.sender), tokenId, amount);
     }
     
@@ -147,10 +157,9 @@ contract NativeTokenManager {
         require(ratio.numerator * amount >= ratio.numerator && ratio.numerator * amount >= amount);
 
         uint256 gasAmount = ratio.numerator * amount / ratio.denominator;
-        require(gasAmount <= auction.highestBid.reserve);
+        require(gasAmount <= gasReserveAuctionBalance[tokenId][highestBidder]);
 
         gasReserveAuctionBalance[tokenId][highestBidder] -= gasAmount;
-        auction.highestBid.reserve -= gasAmount;
         nativeTokenBalances[tokenId][highestBidder] += amount;
         return (gasAmount);
     }
@@ -162,27 +171,10 @@ contract NativeTokenManager {
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
-
-    function bid(
-        Auction storage auction,
-        Bid memory currentbid,
-        address bidder,
-        mapping (address => uint) storage balance
-    ) private returns (bool success) {
-    	// make sure balances have been updated
-    	// compare with auction’s highest bid
-        // preCheck();
-    	Bid memory highestBid = auction.highestBid;
-    	require(compareBid(highestBid, currentbid));
-        balance[bidder] += currentbid.reserve;
-    	auction.highestBidder = bidder;
-    	auction.highestBid = currentbid;
-    	return true;
-    }
     
-    function compareBid(Bid memory highestBid, Bid memory currentBid) private view returns (bool) {
+    function compareBid(Bid memory highestBid, Bid memory currentBid, address highestBidder) private view returns (bool) {
         // compare Bid helper function
-        if (highestBid.reserve < minReserve || highestBid.exchangeRate.numerator == 0) {
+        if (gasReserveAuctionBalance[highestBid.tokenId][highestBidder] < minReserve || highestBid.exchangeRate.numerator == 0) {
             return true;
         }
         require(currentBid.exchangeRate.numerator > 0);
