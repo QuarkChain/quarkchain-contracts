@@ -1,0 +1,27 @@
+{
+  "env": {
+    "mocha": true,
+    "node": true
+  },
+  "extends": ["airbnb-base"],
+  "parserOptions": {
+    "ecmaVersion": 8
+  },
+  "globals": {
+    "artifacts": false,
+    "contract": false,
+    "web3": false
+  },
+  "plugins": ["mocha"],
+  "rules": {
+    "mocha/no-exclusive-tests": "error",
+    "prefer-destructuring": [
+      "error",
+      {
+        "AssignmentExpression": {
+          "array": false
+        }
+      }
+    ]
+  }
+}

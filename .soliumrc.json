@@ -1,0 +1,39 @@
+{
+  "extends": "solium:recommended",
+  "plugins": [
+    "security"
+  ],
+  "rules": {
+    "quotes": [
+      "error",
+      "double"
+    ],
+    "indentation": [
+      "error",
+      4
+    ],
+    "imports-on-top": ["error"],
+    "variable-declarations": ["error"],
+    "array-declarations": ["error"],
+    "operator-whitespace": ["error"],
+    "lbrace": ["error"],
+    "mixedcase": ["error"],
+    "camelcase": ["error"],
+    "uppercase": ["error"],
+    "no-empty-blocks": ["error"],
+    "no-unused-vars": ["error"],
+    "blank-lines": ["error"],
+    "whitespace": ["error"],
+    "deprecated-suicide": ["error"],
+    "pragma-on-top": ["error"],
+    "function-whitespace": ["error"],
+    "semicolon-whitespace": ["error"],
+    "comma-whitespace": ["error"],
+    "conditionals-whitespace": ["error"],
+    "max-len": [
+        "error",
+        100
+    ],
+    "security/no-block-members": [1, ["blockhash"]]
+  }
+}
