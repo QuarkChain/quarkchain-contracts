@@ -27,6 +27,7 @@ contract NativeTokenManager {
         uint256 overtimeLimit;
         uint256 endTime;
         uint256 hardEndTime;
+        bool started;
     }
 
     struct NativeToken {
@@ -34,6 +35,8 @@ contract NativeTokenManager {
         uint256 totalSupply;
     }
 
+    address tempOwner;
+    bool mintAccess;
     Auction newTokenAuction;
     uint256 auctionPeriod;
     uint256 longestPeriod;
@@ -47,12 +50,24 @@ contract NativeTokenManager {
     mapping (uint256 => mapping (address => uint)) gasReserveAuctionBalance;
     mapping (address => mapping (uint256 => uint)) nativeTokenBalances;
 
-    constructor (
+    constructor (address _tempOwner, bool _mintAccess) public {
+        tempOwner = _tempOwner;
+        mintAccess = _mintAccess;
+    }
+
+    function newTokenAuctionSetter(
         uint256 _minTokenAuctionPrice,
         uint256 _minIncrement,
         uint256 _overtimePeriod,
         uint256 _overtimeLimit
-    ) public {
+    )
+        public
+    {
+        require(msg.sender == tempOwner, "Only account in whitelist can set auction details.");
+        require(
+            newTokenAuction.started == false,
+            "Auction setting cannot be modified when it is ongoing."
+        );
         newTokenAuction.minBid.newTokenPrice = _minTokenAuctionPrice;
         newTokenAuction.minIncrement = _minIncrement;
         newTokenAuction.overtimePeriod = _overtimePeriod;
@@ -63,6 +78,7 @@ contract NativeTokenManager {
         // set end time
         newTokenAuction.hardEndTime = now + newTokenAuction.overtimeLimit;
         newTokenAuction.endTime = now + newTokenAuction.overtimePeriod;
+        newTokenAuction.started = true;
     }
 
     function bidNewToken(Bid memory bid) public payable {
@@ -101,6 +117,7 @@ contract NativeTokenManager {
         // 1. deduct bid price from balance
         // 2. update new token info (owner etc)
         // 3. set newTokenAuction to default 0
+        newTokenAuction.started = false;
     }
 
     function mintNewToken(uint256 tokenId) public {
