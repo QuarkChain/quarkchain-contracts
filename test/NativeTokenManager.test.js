@@ -39,7 +39,7 @@ contract('NativeTokenManager', async (accounts) => {
   let manager;
 
   beforeEach(async () => {
-    manager = await NativeTokenManager.new(0, 0, 0, 0);
+    manager = await NativeTokenManager.new(`0x${'0'.repeat(40)}`, 0);
   });
 
   it('should deploy correctly', async () => {

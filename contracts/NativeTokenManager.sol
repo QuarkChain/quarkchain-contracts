@@ -35,7 +35,7 @@ contract NativeTokenManager {
         uint256 totalSupply;
     }
 
-    address tempOwner;
+    address supervisor;
     bool mintAccess;
     Auction newTokenAuction;
     uint256 auctionPeriod;
@@ -50,8 +50,8 @@ contract NativeTokenManager {
     mapping (uint256 => mapping (address => uint)) gasReserveAuctionBalance;
     mapping (address => mapping (uint256 => uint)) nativeTokenBalances;
 
-    constructor (address _tempOwner, bool _mintAccess) public {
-        tempOwner = _tempOwner;
+    constructor (address _supervisor, bool _mintAccess) public {
+        supervisor = _supervisor;
         mintAccess = _mintAccess;
     }
 
@@ -63,7 +63,7 @@ contract NativeTokenManager {
     )
         public
     {
-        require(msg.sender == tempOwner, "Only account in whitelist can set auction details.");
+        require(msg.sender == supervisor, "Only account in whitelist can set auction details.");
         require(
             newTokenAuction.started == false,
             "Auction setting cannot be modified when it is ongoing."
