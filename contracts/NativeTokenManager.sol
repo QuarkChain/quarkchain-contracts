@@ -133,17 +133,21 @@ contract NativeTokenManager {
         currentBid.tokenId = tokenId;
         currentBid.exchangeRate = exchangeRate;
 
-        require(gasReserveAuctionBalance[tokenId][msg.sender] + msg.value > minBidReserve);
-        Auction storage auction = gasReserveAuctions[currentBid.tokenId];
-        mapping (address => uint) storage balance = gasReserveAuctionBalance[currentBid.tokenId];
+        require(gasReserveAuctionBalance[tokenId][msg.sender] + msg.value >= minBidReserve);
+        Auction storage auction = gasReserveAuctions[tokenId];
+        mapping (address => uint) storage balance = gasReserveAuctionBalance[tokenId];
         Bid memory highestBid = auction.highestBid;
-        require(compareBid(highestBid, currentBid, auction.highestBidder));
+        require(
+            gasReserveAuctionBalance[tokenId][auction.highestBidder] < minReserve ||
+            compareBid(highestBid, currentBid)
+        );
         balance[msg.sender] += msg.value;
         auction.highestBidder = msg.sender;
         auction.highestBid = currentBid;
     }
 
     function depositGasReserve(uint256 tokenId) public payable {
+        require(gasReserveAuctionBalance[tokenId][msg.sender] > 0);
         gasReserveAuctionBalance[tokenId][msg.sender] += msg.value;
     }
 
@@ -169,7 +173,7 @@ contract NativeTokenManager {
     }
 
     // Return equivalent QKC for a specified multi native token
-    function payTokenAsUtility(uint256 tokenId, uint256 amount) public returns (uint256) {
+    function payAsGasUtility(uint256 tokenId, uint256 amount) public returns (uint256) {
         // Change the smart contract state first. Then return the Equivalent QKC
         // Revert if it fails.
         Auction storage auction = gasReserveAuctions[tokenId];
@@ -195,13 +199,11 @@ contract NativeTokenManager {
     
     function compareBid(
         Bid memory highestBid,
-        Bid memory currentBid,
-        address highestBidder
+        Bid memory currentBid
     ) private view returns (bool) 
     {
         // compare Bid helper function
-        if (gasReserveAuctionBalance[highestBid.tokenId][highestBidder] < minReserve ||
-             highestBid.exchangeRate.numerator == 0) {
+        if (highestBid.exchangeRate.numerator == 0) {
             return true;
         }
         require(currentBid.exchangeRate.numerator > 0);
