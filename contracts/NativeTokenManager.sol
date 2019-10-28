@@ -4,15 +4,19 @@ pragma experimental ABIEncoderV2;
 
 contract NativeTokenManager {
 
+    // 5 min overtime auction extension to avoid sniping
+    uint64 constant OVERTIME_PERIOD = 300;
+
     struct Fraction {
-        uint256 numerator;
-        uint256 denominator;
+        uint128 numerator;
+        uint128 denominator;
     }
 
+    // Union type for auction bids (new token or gas reserve)
     struct Bid {
         // new token
-        uint256 tokenId;
-        uint256 newTokenPrice;
+        uint128 tokenId;
+        uint128 newTokenPrice;
         // gas reserve
         Fraction exchangeRate;
         uint256 reserve;
@@ -21,11 +25,14 @@ contract NativeTokenManager {
     struct Auction {
         address highestBidder;
         Bid highestBid;
-        Bid minBid;  // for new token, compare w/ price; for gas reserve, compare w/ reserve
-        uint256 minIncrement;
-        uint256 startTime;
-        uint256 endTime;
-        uint256 hardEndTime;
+    }
+
+    struct AuctionParams {
+        uint64 startTime;
+        uint64 duration;
+        // Following are new token auction specific
+        uint64 minIncrementInQKC;
+        uint64 minPriceInQKC;
     }
 
     struct NativeToken {
@@ -33,21 +40,22 @@ contract NativeTokenManager {
         uint256 totalSupply;
     }
 
-    address supervisor;
-    bool allowMint;
-    Auction newTokenAuction;
-    uint256 auctionPeriod;
-    uint256 overtimePeriod;
-    uint256 longestPeriod;
+    // Auction superviosor. Could be DAO in the future
+    address public supervisor;
+    // Whether to allow token auction winners to mint. Should only enable in shard 0
+    bool public allowMint;
 
-    mapping (uint256 => Auction) gasReserveAuctions;
-    uint256 minBidReserve;
-    uint256 minReserve;
+    // Parameters for new token auction
+    Auction public newTokenAuction;
+    AuctionParams public newTokenAuctionParams;
 
-    mapping (uint256 => NativeToken) nativeTokens;
-    mapping (address => uint256) newTokenAuctionBalance;
-    mapping (uint256 => mapping (address => uint)) gasReserveAuctionBalance;
-    mapping (address => mapping (uint256 => uint)) nativeTokenBalances;
+    mapping (uint256 => Auction) public gasReserves;
+    uint256 public minGasReserve;
+
+    mapping (uint256 => NativeToken) public nativeTokens;
+    mapping (address => uint256) public newTokenAuctionBalance;
+    mapping (uint256 => mapping (address => uint256)) public gasReserveBalance;
+    mapping (address => mapping (uint256 => uint256)) public nativeTokenBalances;
 
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
@@ -55,50 +63,44 @@ contract NativeTokenManager {
     }
 
     function newTokenAuctionSetter(
-        uint256 _minTokenAuctionPrice,
-        uint256 _minIncrement,
-        uint256 _auctionPeriod,
-        uint256 _overtimePeriod,
-        uint256 _longestPeriod
+        uint64 _minPriceInQKC,
+        uint64 _minIncrementInQKC,
+        uint64 _duration
     )
         public
     {
         require(msg.sender == supervisor, "Only account in whitelist can set auction details.");
         require(
-            newTokenAuction.startTime == 0,
+            newTokenAuctionParams.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
         );
-        newTokenAuction.minBid.newTokenPrice = _minTokenAuctionPrice;
-        newTokenAuction.minIncrement = _minIncrement;
-        auctionPeriod = _auctionPeriod;
-        overtimePeriod = _overtimePeriod;
-        longestPeriod = _longestPeriod;
+        newTokenAuctionParams.minPriceInQKC = _minPriceInQKC;
+        newTokenAuctionParams.minIncrementInQKC = _minIncrementInQKC;
+        newTokenAuctionParams.duration = _duration;
     }
 
     function newTokenAuctionStart() public {
-        newTokenAuction.startTime = now;
-
-        // set end time
-        newTokenAuction.endTime = now + auctionPeriod;
-        newTokenAuction.hardEndTime = now + longestPeriod;
+        newTokenAuctionParams.startTime = uint64(now);
     }
 
     function bidNewToken(uint256 tokenId, uint256 newTokenPrice) public payable {
-        Bid memory bid = Bid(tokenId, newTokenPrice, Fraction(0, 1), 0);
-        // pre check
-        if (nativeTokens[tokenId].owner != address(0)) {
-            revert("Token ID has been auctioned off.");
-        }
-        require(now < newTokenAuction.endTime, "Auction has ended.");
+        require(nativeTokens[tokenId].owner == address(0), "Token should be available.");
+        require(newTokenAuctionParams.startTime > 0, "Auction should be ongoing.");
+        uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
+        require(now <= endTime, "Auction has ended.");
         require(
-            newTokenPrice >= newTokenAuction.minBid.newTokenPrice,
+            newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
             "Bid price should be larger than minimum bid price."
         );
         require(
             newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
-                             newTokenAuction.minIncrement,
-            "Bid price should be larger than current highest bid."
+                             newTokenAuctionParams.minIncrementInQKC * 1 ether,
+            "Bidding price should be larger than current highest bid."
         );
+
+        Bid memory bid;
+        bid.tokenId = uint128(tokenId);
+        bid.newTokenPrice = uint128(newTokenPrice);
 
         address bidder = msg.sender;
         // bid(newTokenAuction, bid, bidder);
@@ -108,19 +110,20 @@ contract NativeTokenManager {
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
 
-        if (newTokenAuction.endTime - now < overtimePeriod) {
-            newTokenAuction.endTime = min(now + overtimePeriod, newTokenAuction.hardEndTime);
+        if (endTime - now < OVERTIME_PERIOD) {
+            newTokenAuctionParams.duration += OVERTIME_PERIOD;
         }
     }
 
     function newTokenAuctionEnd() public {
-        require(now >= newTokenAuction.endTime, "Auction hasn't ended.");
+        uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
+        require(now >= endTime, "Auction should have ended.");
         Bid memory highestBid = newTokenAuction.highestBid;
         // TODO:
         // 1. deduct bid price from balance
         // 2. update new token info (owner etc)
         // 3. set newTokenAuction to default 0
-        newTokenAuction.startTime = 0;
+        newTokenAuctionParams.startTime = 0;
     }
 
     function mintNewToken(uint256 tokenId) public {
@@ -150,13 +153,13 @@ contract NativeTokenManager {
 
     function bidUtility(Bid memory bid) public payable {
         require(bid.reserve == msg.value);
-        // Auction storage auction = gasReserveAuctions[bid.tokenId];
+        // Auction storage auction = gasReserves[bid.tokenId];
         // bid(auction, bid, msg.sender);
         // gasReserveAuctionBalance[msg.sender][bid.tokenId] += msg.value;
     }
 
     function withdrawGasReserve(uint256 tokenId) public {
-        require(msg.sender != gasReserveAuctions[tokenId].highestBidder);
+        require(msg.sender != gasReserves[tokenId].highestBidder);
         // uint256 amount = gasReserveAuctionBalance[msg.sender][tokenId];
         // gasReserveAuctionBalance[msg.sender][tokenId] -= amount;
         // msg.sender.transfer(amount);
@@ -185,7 +188,7 @@ contract NativeTokenManager {
     }
 
     function getUtilityInfo(uint256 tokenId) public view returns (uint256, uint256) {
-        Auction memory auction = gasReserveAuctions[tokenId];
+        Auction memory auction = gasReserves[tokenId];
         Fraction memory ratio = auction.highestBid.exchangeRate;
         return (ratio.numerator, ratio.denominator);
     }
@@ -195,7 +198,7 @@ contract NativeTokenManager {
     function payTokenAsUntility(uint256 tokenId, uint256 amount) public returns (uint256) {
         // Change the smart contract state first. Then return the Equivalent QKC
         // Revert if it fails.
-        Auction storage auction = gasReserveAuctions[tokenId];
+        Auction storage auction = gasReserves[tokenId];
         address highestBidder = auction.highestBidder;
         require(highestBidder != address(0));
 
@@ -239,7 +242,7 @@ contract NativeTokenManager {
 
     function _compareBid(Bid memory highestBid, Bid memory currentBid) private view returns (bool) {
         // compare Bid helper function
-        if (highestBid.reserve < minReserve) {
+        if (highestBid.reserve < minGasReserve) {
             return true;
         }
         // Avoid overflow of uint256
