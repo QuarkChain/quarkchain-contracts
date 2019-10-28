@@ -39,10 +39,58 @@ contract('NativeTokenManager', async (accounts) => {
   let manager;
 
   beforeEach(async () => {
-    manager = await NativeTokenManager.new(0, 0, 0, 0);
+    manager = await NativeTokenManager.new(toWei(2), toWei(1));
   });
 
   it('should deploy correctly', async () => {
     assert.notEqual(manager.address, `0x${'0'.repeat(40)}`);
+  });
+
+  it('should handle reserve and withdraw correctly', async () => {
+    // Add more QKC fail if invalid tokenId.
+    await manager.depositGasReserve(123, { from: accounts[0], value: toWei(2) })
+      .should.be.rejectedWith(revertError);
+    // First time adding reverve should succeed.
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) });
+    // Check the ratio is correct.
+    let gasRatio = await manager.getUtilityInfo(123);
+    assert.equal(gasRatio[0], 1);
+    assert.equal(gasRatio[1], 1);
+    // Add more QKC success.
+    await manager.depositGasReserve(123, { from: accounts[0], value: toWei(1) });
+    // Check the total deposit.
+    assert.equal(await web3.eth.getBalance(manager.address), toWei(3));
+
+    // Withdraw fail if highest bidder.
+    await manager.withdrawGasReserve(123, { from: accounts[0] })
+      .should.be.rejectedWith(revertError);
+    // New bid fail if lower ratio.
+    await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(20) })
+      .should.be.rejectedWith(revertError);
+    // New bid fail if no enough QKC deposit.
+    await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[1], value: toWei(1) })
+      .should.be.rejectedWith(revertError);
+    // Success.
+    await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[1], value: toWei(20) });
+    // Withdraw QKC success.
+    await manager.withdrawGasReserve(123, { from: accounts[0] });
+    // Check the total deposit.
+    assert.equal(await web3.eth.getBalance(manager.address), toWei(20));
+    // Check the new ratio.
+    gasRatio = await manager.getUtilityInfo(123);
+    assert.equal(gasRatio[0], 2);
+    assert.equal(gasRatio[1], 1);
+    // Highest bidder can bid higher ratio without adding QKC.
+    await manager.proposeNewExchangeRate(123, 3, 1, { from: accounts[1], value: toWei(0) });
+    // Check the new ratio.
+    gasRatio = await manager.getUtilityInfo(123);
+    assert.equal(gasRatio[0], 3);
+    assert.equal(gasRatio[1], 1);
+
+    // New bid fail if zero numerator or denominator.
+    await manager.proposeNewExchangeRate(123, 0, 1, { from: accounts[0], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+    await manager.proposeNewExchangeRate(123, 1, 0, { from: accounts[0], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
   });
 });
