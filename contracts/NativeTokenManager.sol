@@ -83,19 +83,20 @@ contract NativeTokenManager {
         newTokenAuction.hardEndTime = now + longestPeriod;
     }
 
-    function bidNewToken(Bid memory bid) public payable {
+    function bidNewToken(uint256 tokenId, uint256 newTokenPrice) public payable {
+        Bid memory bid = Bid(tokenId, newTokenPrice, Fraction(0, 1), 0);
         // pre check
-        if (nativeTokens[bid.tokenId].owner != address(0)) {
+        if (nativeTokens[tokenId].owner != address(0)) {
             revert("Token ID has been auctioned off.");
         }
         require(now < newTokenAuction.endTime, "Auction has ended.");
         require(
-            bid.newTokenPrice >= newTokenAuction.minBid.newTokenPrice,
+            newTokenPrice >= newTokenAuction.minBid.newTokenPrice,
             "Bid price should be larger than minimum bid price."
         );
         require(
-            bid.newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
-                                 newTokenAuction.minIncrement,
+            newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
+                             newTokenAuction.minIncrement,
             "Bid price should be larger than current highest bid."
         );
 
