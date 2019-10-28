@@ -23,11 +23,9 @@ contract NativeTokenManager {
         Bid highestBid;
         Bid minBid;  // for new token, compare w/ price; for gas reserve, compare w/ reserve
         uint256 minIncrement;
-        uint256 overtimePeriod;
-        uint256 overtimeLimit;
+        uint256 startTime;
         uint256 endTime;
         uint256 hardEndTime;
-        bool started;
     }
 
     struct NativeToken {
@@ -36,9 +34,10 @@ contract NativeTokenManager {
     }
 
     address supervisor;
-    bool mintAccess;
+    bool allowMint;
     Auction newTokenAuction;
     uint256 auctionPeriod;
+    uint256 overtimePeriod;
     uint256 longestPeriod;
 
     mapping (uint256 => Auction) gasReserveAuctions;
@@ -50,35 +49,38 @@ contract NativeTokenManager {
     mapping (uint256 => mapping (address => uint)) gasReserveAuctionBalance;
     mapping (address => mapping (uint256 => uint)) nativeTokenBalances;
 
-    constructor (address _supervisor, bool _mintAccess) public {
+    constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
-        mintAccess = _mintAccess;
+        allowMint = _allowMint;
     }
 
     function newTokenAuctionSetter(
         uint256 _minTokenAuctionPrice,
         uint256 _minIncrement,
+        uint256 _auctionPeriod,
         uint256 _overtimePeriod,
-        uint256 _overtimeLimit
+        uint256 _longestPeriod
     )
         public
     {
         require(msg.sender == supervisor, "Only account in whitelist can set auction details.");
         require(
-            newTokenAuction.started == false,
+            newTokenAuction.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
         );
         newTokenAuction.minBid.newTokenPrice = _minTokenAuctionPrice;
         newTokenAuction.minIncrement = _minIncrement;
-        newTokenAuction.overtimePeriod = _overtimePeriod;
-        newTokenAuction.overtimeLimit = _overtimeLimit;
+        auctionPeriod = _auctionPeriod;
+        overtimePeriod = _overtimePeriod;
+        longestPeriod = _longestPeriod;
     }
 
     function newTokenAuctionStart() public {
+        newTokenAuction.startTime = now;
+
         // set end time
-        newTokenAuction.hardEndTime = now + newTokenAuction.overtimeLimit;
-        newTokenAuction.endTime = now + newTokenAuction.overtimePeriod;
-        newTokenAuction.started = true;
+        newTokenAuction.endTime = now + auctionPeriod;
+        newTokenAuction.hardEndTime = now + longestPeriod;
     }
 
     function bidNewToken(Bid memory bid) public payable {
@@ -105,9 +107,9 @@ contract NativeTokenManager {
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
 
-        newTokenAuction.endTime = min(
-            now + newTokenAuction.overtimePeriod, newTokenAuction.hardEndTime
-        );
+        if (newTokenAuction.endTime - now < overtimePeriod) {
+            newTokenAuction.endTime = min(now + overtimePeriod, newTokenAuction.hardEndTime);
+        }
     }
 
     function newTokenAuctionEnd() public {
@@ -117,7 +119,7 @@ contract NativeTokenManager {
         // 1. deduct bid price from balance
         // 2. update new token info (owner etc)
         // 3. set newTokenAuction to default 0
-        newTokenAuction.started = false;
+        newTokenAuction.startTime = 0;
     }
 
     function mintNewToken(uint256 tokenId) public {
