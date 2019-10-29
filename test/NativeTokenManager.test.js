@@ -39,7 +39,8 @@ contract('NativeTokenManager', async (accounts) => {
   let manager;
 
   beforeEach(async () => {
-    manager = await NativeTokenManager.new(toWei(2), toWei(1));
+    manager = await NativeTokenManager.new(accounts[0], 0);
+    manager.setMinReserve(toWei(2), { from: accounts[0] });
   });
 
   it('should deploy correctly', async () => {
