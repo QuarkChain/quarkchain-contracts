@@ -45,8 +45,4 @@ contract('NativeTokenManager', async (accounts) => {
   it('should deploy correctly', async () => {
     assert.notEqual(manager.address, `0x${'0'.repeat(40)}`);
   });
-
-  // it('one person places a bid and should win', async () => {
-
-  // });
 });
