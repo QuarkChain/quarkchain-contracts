@@ -93,5 +93,8 @@ contract('NativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
     await manager.proposeNewExchangeRate(123, 1, 0, { from: accounts[0], value: toWei(10) })
       .should.be.rejectedWith(revertError);
+    // ratio * 21000 <= minGasReserve
+    await manager.proposeNewExchangeRate(123, toWei(1), 1, { from: accounts[0], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
   });
 });

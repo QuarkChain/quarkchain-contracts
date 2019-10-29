@@ -162,9 +162,12 @@ contract NativeTokenManager {
     )
         public payable
     {
-        require(rateNumerator <= 10^16, "ratio <= 10^21 / 21000");
         require(rateNumerator > 0, "numerator should be a valid term");
         require(rateDenominator > 0, "denominator should be a valid term");
+        require(
+            rateNumerator * 21000 <= minGasReserve * rateDenominator,
+            "ratio * 21000 <= minGasReserve"
+        );
         Fraction memory exchangeRate;
         exchangeRate.numerator = rateNumerator;
         exchangeRate.denominator = rateDenominator;
