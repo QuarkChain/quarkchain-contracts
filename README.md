@@ -1,6 +1,6 @@
-# QuarkChain System Contracts
+# QuarkChain Contracts
 
-Note those contract will be part of consensus.
+Some of the contracts will be part of consensus, some will be reference implementations for standardized interfaces, and so forth.
 
 Try compile:
 
