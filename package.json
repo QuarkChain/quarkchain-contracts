@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {},
   "devDependencies": {
+    "braces": "^3.0.2",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^4.19.1",
@@ -22,6 +23,7 @@
     "eslint-plugin-import": "^2.12.0",
     "eslint-plugin-mocha": "^5.0.0",
     "husky": "^3.0.9",
+    "mem": "^5.1.1",
     "solium": "^1.2.5",
     "truffle": "^5.0.42",
     "web3": "^1.2.2"
