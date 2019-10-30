@@ -103,7 +103,9 @@ contract NativeTokenManager {
         bid.newTokenPrice = uint128(newTokenPrice);
 
         address bidder = msg.sender;
-        newTokenAuctionBalance[bidder] += msg.value;
+        uint256 newBalance = newTokenAuctionBalance[bidder] + msg.value;
+        require(newBalance >= newTokenAuctionBalance[bidder], "Addition overflow");
+        newTokenAuctionBalance[bidder] = newBalance;
         require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
         // Win the bid!
