@@ -5,7 +5,8 @@ pragma experimental ABIEncoderV2;
 contract NativeTokenManager {
 
     // 5 min overtime auction extension to avoid sniping
-    uint64 constant OVERTIME_PERIOD = 300;
+    // uint64 constant OVERTIME_PERIOD = 300;
+    uint64 constant OVERTIME_PERIOD = 1;  // set to 1 temperarily for testing
 
     struct Fraction {
         uint128 numerator;
@@ -77,6 +78,9 @@ contract NativeTokenManager {
         newTokenAuctionParams.minPriceInQKC = _minPriceInQKC;
         newTokenAuctionParams.minIncrementInQKC = _minIncrementInQKC;
         newTokenAuctionParams.duration = _duration;
+
+        // default highest bidder?
+        newTokenAuction.highestBid.newTokenPrice = _minPriceInQKC - _minIncrementInQKC;
     }
 
     function newTokenAuctionStart() public {
@@ -89,12 +93,11 @@ contract NativeTokenManager {
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
         require(now <= endTime, "Auction has ended.");
         require(
-            newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
+            newTokenPrice >= newTokenAuctionParams.minPriceInQKC,
             "Bid price should be larger than minimum bid price."
         );
         require(
-            newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
-                             newTokenAuctionParams.minIncrementInQKC * 1 ether,
+            newTokenPrice >= newTokenAuction.highestBid.newTokenPrice + newTokenAuctionParams.minIncrementInQKC,
             "Bidding price should be larger than current highest bid."
         );
 
@@ -103,13 +106,14 @@ contract NativeTokenManager {
         bid.newTokenPrice = uint128(newTokenPrice);
 
         address bidder = msg.sender;
-        // bid(newTokenAuction, bid, bidder);
         newTokenAuctionBalance[bidder] += msg.value;
         require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
+        // Win the bid!
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
 
+        // Extend the auction if the last bid is too close to end time.
         if (endTime - now < OVERTIME_PERIOD) {
             newTokenAuctionParams.duration += OVERTIME_PERIOD;
         }
@@ -117,12 +121,15 @@ contract NativeTokenManager {
 
     function newTokenAuctionEnd() public {
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
-        require(now >= endTime, "Auction should have ended.");
+        require(now >= endTime, "Auction has not ended.");
+
+        address highestBidder = newTokenAuction.highestBidder;
         Bid memory highestBid = newTokenAuction.highestBid;
-        // TODO:
-        // 1. deduct bid price from balance
-        // 2. update new token info (owner etc)
-        // 3. set newTokenAuction to default 0
+        newTokenAuctionBalance[highestBidder] -= highestBid.newTokenPrice;
+        nativeTokens[highestBid.tokenId].owner = highestBidder;
+
+        // Set newTokenAuction to default 0
+        newTokenAuction.highestBidder = address(0);
         newTokenAuctionParams.startTime = 0;
     }
 

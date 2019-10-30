@@ -9,6 +9,11 @@ const revertError = 'VM Exception while processing transaction: revert';
 const toHex = web3.utils.asciiToHex;
 const toWei = i => web3.utils.toWei(String(i));
 const web3SendAsync = promisify(web3.currentProvider.send);
+/* eslint-disable */
+const sleep = (milliseconds) => {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+};
+/* eslint-disable */
 
 // For EVM snapshot - revert workflow.
 let snapshotId;
@@ -49,14 +54,30 @@ contract('NativeTokenManager', async (accounts) => {
   });
 
   it('should handle new token bid sucessfully', async () => {
-    await manager.newTokenAuctionSetter(1000, 50, 10000, { from: accounts[0] });
-    console.log('sss', supervisor);
+    await manager.newTokenAuctionSetter(1000, 50, 3, { from: accounts[0] });
 
     // Start a new token auction.
     await manager.newTokenAuctionStart();
-
     // One bidder place a bid.
-    manager.bidNewToken(990, 900, { from: accounts[1], value: 800 });
-    console.log('sssd', accounts[1]);
+    await manager.bidNewToken(990, 1000, { from: accounts[1], value: 1001 });
+    await sleep(3000);
+    await manager.newTokenAuctionEnd();
+    let nativeToken = await manager.nativeTokens(990);
+    assert.equal(nativeToken.owner, accounts[1]);
+
+    // Start a new token auction.
+    await manager.newTokenAuctionStart();
+    // Bidder 1 places a bid, should success.
+    await manager.bidNewToken(991, 1100, { from: accounts[1], value: 1100 });
+    // Bidder 2 places a bid with lower price, should fail.
+    await manager.bidNewToken(992, 1050, { from: accounts[2], value: 1050 })
+      .should.be.rejectedWith(revertError);
+    // Bidder 2 place another valid bid.
+    await manager.bidNewToken(992, 1200, { from: accounts[2], value: 1200 });
+    await sleep(3000);
+    // The auction ends, Bidder 2 wins.
+    await manager.newTokenAuctionEnd();
+    nativeToken = await manager.nativeTokens(992);
+    assert.equal(nativeToken.owner, accounts[2]);
   });
 });
