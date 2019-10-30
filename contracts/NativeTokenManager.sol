@@ -5,8 +5,7 @@ pragma experimental ABIEncoderV2;
 contract NativeTokenManager {
 
     // 5 min overtime auction extension to avoid sniping
-    // uint64 constant OVERTIME_PERIOD = 300;
-    uint64 constant OVERTIME_PERIOD = 1;  // set to 1 temperarily for testing
+    uint64 constant OVERTIME_PERIOD = 300;
 
     struct Fraction {
         uint128 numerator;
@@ -78,9 +77,6 @@ contract NativeTokenManager {
         newTokenAuctionParams.minPriceInQKC = _minPriceInQKC;
         newTokenAuctionParams.minIncrementInQKC = _minIncrementInQKC;
         newTokenAuctionParams.duration = _duration;
-
-        // default highest bidder?
-        newTokenAuction.highestBid.newTokenPrice = _minPriceInQKC - _minIncrementInQKC;
     }
 
     function newTokenAuctionStart() public {
@@ -93,12 +89,13 @@ contract NativeTokenManager {
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
         require(now <= endTime, "Auction has ended.");
         require(
-            newTokenPrice >= newTokenAuctionParams.minPriceInQKC,
+            newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
             "Bid price should be larger than minimum bid price."
         );
         require(
-            newTokenPrice >= newTokenAuction.highestBid.newTokenPrice + newTokenAuctionParams.minIncrementInQKC,
-            "Bidding price should be larger than current highest bid."
+            newTokenPrice >= newTokenAuction.highestBid.newTokenPrice +
+                             newTokenAuctionParams.minIncrementInQKC * 1 ether,
+            "Bid price should be larger than current highest bid with increment."
         );
 
         Bid memory bid;
