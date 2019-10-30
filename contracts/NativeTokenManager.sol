@@ -15,10 +15,12 @@ contract NativeTokenManager {
     // Union type for auction bids (new token or gas reserve)
     struct Bid {
         // new token
-        uint256 tokenId;
-        uint256 newTokenPrice;
+        uint128 tokenId;
+        uint128 newTokenPrice;
         // gas reserve
         Fraction exchangeRate;
+        // between 0 and 100.
+        uint64 refundRate;
     }
 
     struct Auction {
@@ -43,18 +45,20 @@ contract NativeTokenManager {
     address public supervisor;
     // Whether to allow token auction winners to mint. Should only enable in shard 0
     bool public allowMint;
+    // This only uses for testing.
+    address public gasPayer;
 
     // Parameters for new token auction
     Auction public newTokenAuction;
     AuctionParams public newTokenAuctionParams;
 
-    mapping (uint256 => Auction) public gasReserves;
+    mapping (uint128 => Auction) public gasReserves;
     uint256 public minGasReserve;
 
-    mapping (uint256 => NativeToken) nativeTokens;
-    mapping (address => uint256) newTokenAuctionBalance;
-    mapping (uint256 => mapping (address => uint)) gasReserveBalance;
-    mapping (uint256 => mapping (address => uint)) nativeTokenBalances;
+    mapping (uint128 => NativeToken) public nativeTokens;
+    mapping (address => uint256) public newTokenAuctionBalance;
+    mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
+    mapping (uint128 => mapping (address => uint256)) public nativeTokenBalances;
 
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
@@ -64,6 +68,12 @@ contract NativeTokenManager {
     function setMinReserve(uint256 _minGasReserve) public {
         require(msg.sender == supervisor, "Only supervisor can set minGasReserve");
         minGasReserve = _minGasReserve;
+    }
+
+    // This function only calls by testing
+    function setGasPayer(address _gasPayer) public {
+        require(msg.sender == supervisor, "Only supervisor can set minGasReserve");
+        gasPayer = _gasPayer;
     }
 
     function newTokenAuctionSetter(
@@ -87,7 +97,7 @@ contract NativeTokenManager {
         newTokenAuctionParams.startTime = uint64(now);
     }
 
-    function bidNewToken(uint256 tokenId, uint256 newTokenPrice) public payable {
+    function bidNewToken(uint128 tokenId, uint128 newTokenPrice) public payable {
         require(nativeTokens[tokenId].owner == address(0), "Token should be available.");
         require(newTokenAuctionParams.startTime > 0, "Auction should be ongoing.");
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
@@ -130,12 +140,12 @@ contract NativeTokenManager {
         newTokenAuctionParams.startTime = 0;
     }
 
-    function mintNewToken(uint256 tokenId) public {
+    function mintNewToken(uint128 tokenId) public {
         require(msg.sender == nativeTokens[tokenId].owner, "Only the owner can mint new token.");
         // TODO
     }
 
-    function transferOwnership(uint256 tokenId, address newOwner) public payable {
+    function transferOwnership(uint128 tokenId, address newOwner) public payable {
         require(
             msg.sender == nativeTokens[tokenId].owner,
             "Only the owner can transfer ownership."
@@ -156,7 +166,7 @@ contract NativeTokenManager {
     }
 
     function proposeNewExchangeRate(
-        uint256 tokenId,
+        uint128 tokenId,
         uint128 rateNumerator,
         uint128 rateDenominator
     )
@@ -180,7 +190,7 @@ contract NativeTokenManager {
             msg.value >= minGasReserve, "should have amount >= minimum"
         );
         Auction storage auction = gasReserves[tokenId];
-        mapping (address => uint) storage balance = gasReserveBalance[tokenId];
+        mapping (address => uint256) storage balance = gasReserveBalance[tokenId];
         Bid memory highestBid = auction.highestBid;
         require(
             gasReserveBalance[tokenId][auction.highestBidder] < minGasReserve ||
@@ -191,16 +201,31 @@ contract NativeTokenManager {
         balance[msg.sender] = newBalance;
         auction.highestBidder = msg.sender;
         auction.highestBid = currentBid;
+        // Default refund rate is 50%.
+        auction.highestBid.refundRate = 50;
     }
 
-    function depositGasReserve(uint256 tokenId) public payable {
+    function depositGasReserve(uint128 tokenId) public payable {
         require(gasReserveBalance[tokenId][msg.sender] > 0, "should be an exited token");
         uint256 newBalance = gasReserveBalance[tokenId][msg.sender] + msg.value;
         require(newBalance >= msg.value, "should be a valid term");
         gasReserveBalance[tokenId][msg.sender] = newBalance;
     }
 
-    function withdrawGasReserve(uint256 tokenId) public {
+    function setRefundRate(
+        uint128 tokenId,
+        uint64 refundRate
+    ) public
+    {
+        require(
+            msg.sender == gasReserves[tokenId].highestBidder,
+            "Only highestBidder can set refund rate"
+        );
+        require(refundRate > 0 && refundRate <= 100, "0 < rate <= 100%");
+        gasReserves[tokenId].highestBid.refundRate = refundRate;
+    }
+
+    function withdrawGasReserve(uint128 tokenId) public {
         require(
             msg.sender != gasReserves[tokenId].highestBidder,
             "not allowed when highest bidder"
@@ -211,24 +236,35 @@ contract NativeTokenManager {
         msg.sender.transfer(amount);
     }
 
-    function withdrawNativeToken(uint256 tokenId) public {
+    function checkGasReserve(uint128 tokenId) public view returns (uint256) {
+        return gasReserveBalance[tokenId][msg.sender];
+    }
+
+    function checkNativeToken(uint128 tokenId) public view returns (uint256) {
+        return nativeTokenBalances[tokenId][msg.sender];
+    }
+
+    function withdrawNativeToken(uint128 tokenId) public {
         uint256 amount = nativeTokenBalances[tokenId][msg.sender];
         require(amount > 0, "should be a valid account");
         // Transfer native token
         nativeTokenBalances[tokenId][msg.sender] = 0;
-        transferMNT(uint256(msg.sender), tokenId, amount);
+        transferMNT(uint256(msg.sender), uint256(tokenId), amount);
     }
 
-    function getUtilityInfo(uint256 tokenId) public view returns (uint256, uint256) {
+    function getUtilityInfo(uint128 tokenId)
+        public view returns (uint128, uint128, uint64)
+    {
         Auction memory auction = gasReserves[tokenId];
         Fraction memory ratio = auction.highestBid.exchangeRate;
-        return (ratio.numerator, ratio.denominator);
+        return (ratio.numerator, ratio.denominator, auction.highestBid.refundRate);
     }
 
     // Return equivalent QKC for a specified multi native token
-    function payAsGasUtility(uint256 tokenId, uint256 amount) public returns (uint256) {
+    function payAsGasUtility(uint128 tokenId, uint256 amount) public returns (uint256) {
         // Change the smart contract state first. Then return the Equivalent QKC
         // Revert if it fails.
+        require(msg.sender == gasPayer, "Only smart contract address can call this function");
         Auction storage auction = gasReserves[tokenId];
         address highestBidder = auction.highestBidder;
         require(highestBidder != address(0), "should be a valid token");
@@ -238,7 +274,7 @@ contract NativeTokenManager {
         require(ratio.denominator > 0, "denominator non-zero");
         require(
             ratio.numerator * amount >= ratio.numerator &&
-            ratio.numerator * amount >= amount, "avoid overflow of uint256"
+            ratio.numerator * amount >= amount, "avoid overflow of uint258"
         );
 
         uint256 gasAmount = ratio.numerator * amount / ratio.denominator;
@@ -267,13 +303,13 @@ contract NativeTokenManager {
         }
         require(currentBid.exchangeRate.numerator > 0, "not allowed for zero ratio");
         // Avoid overflow of uint256
-        uint256 leftItem = highestBid.exchangeRate.numerator * currentBid.exchangeRate.denominator;
-        uint256 rightItem = currentBid.exchangeRate.numerator * highestBid.exchangeRate.denominator;
+        uint128 leftItem = highestBid.exchangeRate.numerator * currentBid.exchangeRate.denominator;
+        uint128 rightItem = currentBid.exchangeRate.numerator * highestBid.exchangeRate.denominator;
         require(
-            leftItem >= highestBid.exchangeRate.numerator, "avoid overflow of uint256"
+            leftItem >= highestBid.exchangeRate.numerator, "avoid overflow of uint128"
         );
         require(
-            rightItem >= currentBid.exchangeRate.numerator, "avoid overflow of uint256"
+            rightItem >= currentBid.exchangeRate.numerator, "avoid overflow of uint128"
         );
         return (rightItem > leftItem);
     }

@@ -72,21 +72,33 @@ contract('NativeTokenManager', async (accounts) => {
     await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[1], value: toWei(1) })
       .should.be.rejectedWith(revertError);
     // Success.
-    await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[1], value: toWei(20) });
+    await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[1], value: toWei(22) });
     // Withdraw QKC success.
     await manager.withdrawGasReserve(123, { from: accounts[0] });
     // Check the total deposit.
-    assert.equal(await web3.eth.getBalance(manager.address), toWei(20));
+    assert.equal(await web3.eth.getBalance(manager.address), toWei(22));
     // Check the new ratio.
     gasRatio = await manager.getUtilityInfo(123);
     assert.equal(gasRatio[0], 2);
     assert.equal(gasRatio[1], 1);
     // Highest bidder can bid higher ratio without adding QKC.
     await manager.proposeNewExchangeRate(123, 3, 1, { from: accounts[1], value: toWei(0) });
+
+    // Test refund rate.
+    // Only highestBidder can set refund rate.
+    await manager.setRefundRate(123, 66, { from: accounts[0] })
+      .should.be.rejectedWith(revertError);
+    // Success.
+    await manager.setRefundRate(123, 66, { from: accounts[1] });
+    // refund rate > 0 && refund rate <= 100
+    await manager.setRefundRate(123, 101, { from: accounts[1] })
+      .should.be.rejectedWith(revertError);
+
     // Check the new ratio.
     gasRatio = await manager.getUtilityInfo(123);
     assert.equal(gasRatio[0], 3);
     assert.equal(gasRatio[1], 1);
+    assert.equal(gasRatio[2], 66);
 
     // New bid fail if zero numerator or denominator.
     await manager.proposeNewExchangeRate(123, 0, 1, { from: accounts[0], value: toWei(10) })
@@ -96,5 +108,16 @@ contract('NativeTokenManager', async (accounts) => {
     // ratio * 21000 <= minGasReserve
     await manager.proposeNewExchangeRate(123, toWei(1), 1, { from: accounts[0], value: toWei(10) })
       .should.be.rejectedWith(revertError);
+
+    // Test payAsGasUtility.
+    await manager.setGasPayer(accounts[3], { from: accounts[0] });
+    await manager.payAsGasUtility(123, toWei(7), { from: accounts[3] });
+    // Check the total deposit. toWei(22) - toWei(7) * 3 = toWei(1).
+    assert.equal(await manager.checkGasReserve(123, { from: accounts[1] }), toWei(1));
+    // Check the native token amount.
+    assert.equal(await manager.checkNativeToken(123, { from: accounts[1] }), toWei(7));
+
+    // Anyone can bid success when balance < minGasReserve.
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[4], value: toWei(2) });
   });
 });
