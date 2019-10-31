@@ -94,7 +94,6 @@ contract NonReservedNativeTokenManager {
             newTokenAuctionParams.startTime = uint64(now);
         }
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
-        require(now <= endTime, "Auction has ended.");
 
         require(
             newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
