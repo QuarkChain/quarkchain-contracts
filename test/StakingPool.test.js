@@ -3,12 +3,11 @@ const assert = require('assert');
 const { promisify } = require('util');
 
 const StakingPool = artifacts.require('./StakingPool');
+const SelfDestruct = artifacts.require('./mocks/SelfDestruct');
 require('chai').use(require('chai-as-promised')).should();
 
 const revertError = 'VM Exception while processing transaction: revert';
-const toHex = web3.utils.asciiToHex;
 const toWei = i => web3.utils.toWei(String(i));
-const web3SendAsync = promisify(web3.currentProvider.send);
 const gasPriceMax = 0;
 
 function txGen(from, value) {
@@ -17,29 +16,9 @@ function txGen(from, value) {
   };
 }
 
-// For EVM snapshot - revert workflow.
-let snapshotId;
-
-async function addDaysOnEVM(days) {
-  const seconds = days * 3600 * 24;
-  await web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_increaseTime', params: [seconds], id: 0,
-  });
-  await web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0,
-  });
-}
-
-function snapshotEVM() {
-  return web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_snapshot', id: Date.now() + 1,
-  }).then(({ result }) => { snapshotId = result; });
-}
-
-function revertEVM() {
-  return web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_revert', params: [snapshotId], id: Date.now() + 1,
-  });
+async function forceSend(target, value) {
+  const selfDestruct = await SelfDestruct.new({ value });
+  await selfDestruct.forceSend(target);
 }
 
 contract('StakingPool', async (accounts) => {
@@ -59,14 +38,62 @@ contract('StakingPool', async (accounts) => {
 
   it('should handle adding stakes properly', async () => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
-    const minerFee = await pool.minerFee();
-    assert.equal(minerFee.toNumber(), 0);
+    const minerReward = await pool.minerReward();
+    assert.equal(minerReward, 0);
     const dividend = await pool.getDividend();
-    assert.equal(dividend.toNumber(), 0);
+    assert.equal(dividend, 0);
+    let stakerNumber = await pool.totalStakerSize();
+    assert.equal(stakerNumber, 1);
     const staker = await pool.stakers(0);
     assert.equal(staker, accounts[0]);
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(42));
-    assert.equal(stakerInfo[1].toNumber(), 0);
+    assert.equal(stakerInfo[1], 0);
+    let totalStakes = await pool.totalStakes();
+    assert.equal(totalStakes, toWei(42));
+
+    await pool.sendTransaction(txGen(accounts[1], toWei(100)));
+    stakerNumber = await pool.totalStakerSize();
+    assert.equal(stakerNumber, 2);
+    totalStakes = await pool.totalStakes();
+    assert.equal(totalStakes, toWei(142));
+  });
+
+  it('should handle withdrawing stakes properly', async () => {
+    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await pool.withdrawStakes(toWei(40));
+    let totalStakes = await pool.totalStakes();
+    assert.equal(totalStakes, toWei(2));
+    let poolBalance = await web3.eth.getBalance(pool.address);
+    assert.equal(poolBalance, toWei(2));
+    // Failure.
+    await pool.withdrawStakes(toWei(3))
+      .should.be.rejectedWith(revertError);
+    // Withdraw all.
+    await pool.withdrawStakes(toWei(2));
+    const stakerNumber = await pool.totalStakerSize();
+    assert.equal(stakerNumber, 0);
+    totalStakes = await pool.totalStakes();
+    assert.equal(totalStakes, 0);
+    poolBalance = await web3.eth.getBalance(pool.address);
+    assert.equal(poolBalance, 0);
+  });
+
+  it('should calculate payout correctly', async () => {
+    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await forceSend(pool.address, toWei(8));
+    const poolBalance = await web3.eth.getBalance(pool.address);
+    assert.equal(poolBalance, toWei(50));
+    // State has not been updated.
+    let minerReward = await pool.minerReward();
+    assert.equal(minerReward, 0);
+    // But dividend should reflect the change.
+    const dividend = await pool.getDividend();
+    assert.equal(dividend, toWei(8));
+    // Update internal state.
+    await pool.calculatePayout();
+    minerReward = await pool.minerReward();
+    // 50% of coinbase rewards goes to miner.
+    assert.equal(minerReward, toWei(4));
   });
 });

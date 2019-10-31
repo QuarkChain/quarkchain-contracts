@@ -12,8 +12,9 @@ contract StakingPool {
     address[] public stakers;
     uint256 public totalStakes;
     address payable public miner;
+    // Miner reward rate in basis point.
     uint256 public feeRateBp;
-    uint256 public minerFee;
+    uint256 public minerReward;
     uint128 public maxStakers;
 
     constructor(address payable _miner, uint256 _feeRateBp, uint128 _maxStakers) public {
@@ -25,6 +26,10 @@ contract StakingPool {
 
     function getDividend() public view returns (uint256) {
         return address(this).balance - totalStakes;
+    }
+
+    function totalStakerSize() public view returns (uint256) {
+        return stakers.length;
     }
 
     // Add stakes
@@ -61,11 +66,11 @@ contract StakingPool {
         calculatePayout();
     }
 
-    function withdrawMinerRewards() public {
+    function withdrawMinerReward() public {
         require(msg.sender == miner, "Only miner can withdraw his/her rewards.");
         calculatePayout();
-        uint256 toWithdraw = minerFee;
-        minerFee = 0;
+        uint256 toWithdraw = minerReward;
+        minerReward = 0;
         msg.sender.transfer(toWithdraw);
     }
 
@@ -75,21 +80,21 @@ contract StakingPool {
         miner = _miner;
     }
 
-    function calculatePayout() private {
+    function calculatePayout() public {
         uint256 dividend = getDividend();
         uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
-        uint256 paid = 0;
+        uint256 totalPaid = 0;
         for (uint16 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
             uint256 toPay = info.stakes * stakerPayout / totalStakes;
-            paid += toPay;
+            totalPaid += toPay;
             info.stakes += uint128(toPay);
         }
 
-        totalStakes += paid;
-        require(totalStakes >= paid, "Addition overflow.");
+        totalStakes += totalPaid;
+        require(totalStakes >= totalPaid, "Addition overflow.");
 
-        minerFee += dividend - paid;
+        minerReward += dividend - totalPaid;
 
         require(address(this).balance >= totalStakes, "Balance should be more than stakes.");
     }
