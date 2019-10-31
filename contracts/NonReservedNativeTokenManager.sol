@@ -54,6 +54,11 @@ contract NonReservedNativeTokenManager {
         allowMint = _allowMint;
     }
 
+    event AuctionEnded(
+        address _winner,
+        uint128 _newTokenId
+    );
+
     function setMinReserve(uint256 _minGasReserve) public {
         require(msg.sender == supervisor, "Only supervisor can set minGasReserve");
         minGasReserve = _minGasReserve;
@@ -76,15 +81,21 @@ contract NonReservedNativeTokenManager {
         newTokenAuctionParams.duration = _duration;
     }
 
-    function newTokenAuctionStart() public {
-        newTokenAuctionParams.startTime = uint64(now);
-    }
-
     function bidNewToken(uint128 tokenId, uint128 newTokenPrice) public payable {
         require(nativeTokens[tokenId].owner == address(0), "Token should be available.");
-        require(newTokenAuctionParams.startTime > 0, "Auction should be ongoing.");
+
+        if (newTokenAuctionParams.startTime == 0) {
+            // Auction hasn't started. Start now.
+            newTokenAuctionParams.startTime = uint64(now);
+        } else if (uint64(now) > newTokenAuctionParams.startTime + newTokenAuctionParams.duration) {
+            // End last round of auction.
+            newTokenAuctionEnd();
+            // Start a new round of auction.
+            newTokenAuctionParams.startTime = uint64(now);
+        }
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
         require(now <= endTime, "Auction has ended.");
+
         require(
             newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
             "Bid price should be larger than minimum bid price."
@@ -123,6 +134,7 @@ contract NonReservedNativeTokenManager {
         Bid memory highestBid = newTokenAuction.highestBid;
         newTokenAuctionBalance[highestBidder] -= highestBid.newTokenPrice;
         nativeTokens[highestBid.tokenId].owner = highestBidder;
+        emit AuctionEnded(highestBidder, highestBid.tokenId);
 
         // Set newTokenAuction to default 0
         newTokenAuction.highestBidder = address(0);
