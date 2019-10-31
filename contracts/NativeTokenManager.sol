@@ -93,9 +93,9 @@ contract NativeTokenManager {
             "Bid price should be larger than minimum bid price."
         );
         require(
-            newTokenPrice >= newTokenAuctionBalance[newTokenAuction.highestBidder] +
+            newTokenPrice >= newTokenAuction.highestBid.newTokenPrice +
                              newTokenAuctionParams.minIncrementInQKC * 1 ether,
-            "Bidding price should be larger than current highest bid."
+            "Bid price should be larger than current highest bid with increment."
         );
 
         Bid memory bid;
@@ -103,13 +103,16 @@ contract NativeTokenManager {
         bid.newTokenPrice = uint128(newTokenPrice);
 
         address bidder = msg.sender;
-        // bid(newTokenAuction, bid, bidder);
-        newTokenAuctionBalance[bidder] += msg.value;
+        uint256 newBalance = newTokenAuctionBalance[bidder] + msg.value;
+        require(newBalance >= msg.value, "Addition overflow");
+        newTokenAuctionBalance[bidder] = newBalance;
         require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
+        // Win the bid!
         newTokenAuction.highestBid = bid;
         newTokenAuction.highestBidder = bidder;
 
+        // Extend the auction if the last bid is too close to end time.
         if (endTime - now < OVERTIME_PERIOD) {
             newTokenAuctionParams.duration += OVERTIME_PERIOD;
         }
@@ -117,12 +120,15 @@ contract NativeTokenManager {
 
     function newTokenAuctionEnd() public {
         uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
-        require(now >= endTime, "Auction should have ended.");
+        require(now >= endTime, "Auction has not ended.");
+
+        address highestBidder = newTokenAuction.highestBidder;
         Bid memory highestBid = newTokenAuction.highestBid;
-        // TODO:
-        // 1. deduct bid price from balance
-        // 2. update new token info (owner etc)
-        // 3. set newTokenAuction to default 0
+        newTokenAuctionBalance[highestBidder] -= highestBid.newTokenPrice;
+        nativeTokens[highestBid.tokenId].owner = highestBidder;
+
+        // Set newTokenAuction to default 0
+        newTokenAuction.highestBidder = address(0);
         newTokenAuctionParams.startTime = 0;
     }
 

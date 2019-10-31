@@ -37,12 +37,47 @@ function revertEVM() {
 
 contract('NativeTokenManager', async (accounts) => {
   let manager;
+  let supervisor;
 
   beforeEach(async () => {
-    manager = await NativeTokenManager.new(`0x${'0'.repeat(40)}`, 0);
+    supervisor = accounts[0];
+    manager = await NativeTokenManager.new(supervisor, true);
   });
 
   it('should deploy correctly', async () => {
     assert.notEqual(manager.address, `0x${'0'.repeat(40)}`);
+  });
+
+  it('should handle new token bid sucessfully', async () => {
+    await manager.newTokenAuctionSetter(5, 2, 7 * 3600 * 24, { from: accounts[0] });
+
+    // Start a new token auction.
+    await manager.newTokenAuctionStart();
+    // One bidder place a bid.
+    await manager.bidNewToken(990, toWei(5), { from: accounts[1], value: toWei(5) });
+    await addDaysOnEVM(6);
+    await manager.newTokenAuctionEnd().should.be.rejectedWith(revertError);
+    await addDaysOnEVM(7);
+    await manager.newTokenAuctionEnd();
+    let nativeToken = await manager.nativeTokens(990);
+    assert.equal(nativeToken.owner, accounts[1]);
+
+    // Start a new token auction.
+    await manager.newTokenAuctionStart();
+    // Bidder 1 places a bid, should success.
+    await manager.bidNewToken(991, toWei(7), { from: accounts[1], value: toWei(7) });
+    // Bidder 2 places a bid with lower price, should fail.
+    await manager.bidNewToken(992, toWei(6), { from: accounts[2], value: toWei(6) })
+      .should.be.rejectedWith(revertError);
+    // Bidder 2 place another bid with not enough increment, should fail.
+    await manager.bidNewToken(992, toWei(8), { from: accounts[2], value: toWei(9) })
+      .should.be.rejectedWith(revertError);
+    // Bidder 2 place yet another valid bid, should success.
+    await manager.bidNewToken(992, toWei(9), { from: accounts[2], value: toWei(9) });
+    await addDaysOnEVM(7);
+    // The auction ends, Bidder 2 wins.
+    await manager.newTokenAuctionEnd();
+    nativeToken = await manager.nativeTokens(992);
+    assert.equal(nativeToken.owner, accounts[2]);
   });
 });
