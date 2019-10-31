@@ -61,8 +61,8 @@ contract StakingPool {
         calculatePayout();
     }
 
-    function withdrawFee() public {
-        require(msg.sender == miner, "Only miner can withdraw fees.");
+    function withdrawMinerRewards() public {
+        require(msg.sender == miner, "Only miner can withdraw his/her rewards.");
         calculatePayout();
         uint256 toWithdraw = minerFee;
         minerFee = 0;
