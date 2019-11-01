@@ -22,6 +22,7 @@ contract NonReservedNativeTokenManager {
     struct AuctionParams {
         uint64 startTime;
         uint64 duration;
+        uint64 overtime;
         // Following are new token auction specific
         uint64 minIncrementInQKC;
         uint64 minPriceInQKC;
@@ -49,15 +50,15 @@ contract NonReservedNativeTokenManager {
     mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
     mapping (uint128 => mapping (address => uint256)) public nativeTokenBalances;
 
+    event AuctionEnded(
+        address winner,
+        uint128 newTokenId
+    );
+
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
         allowMint = _allowMint;
     }
-
-    event AuctionEnded(
-        address _winner,
-        uint128 _newTokenId
-    );
 
     function setMinReserve(uint256 _minGasReserve) public {
         require(msg.sender == supervisor, "Only supervisor can set minGasReserve");
@@ -87,13 +88,15 @@ contract NonReservedNativeTokenManager {
         if (newTokenAuctionParams.startTime == 0) {
             // Auction hasn't started. Start now.
             newTokenAuctionParams.startTime = uint64(now);
-        } else if (uint64(now) > newTokenAuctionParams.startTime + newTokenAuctionParams.duration) {
+        } else if (uint64(now) > newTokenAuctionParams.startTime + newTokenAuctionParams.duration +
+                   newTokenAuctionParams.overtime) {
             // End last round of auction.
             newTokenAuctionEnd();
             // Start a new round of auction.
             newTokenAuctionParams.startTime = uint64(now);
         }
-        uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
+        uint64 endTime = newTokenAuctionParams.startTime +
+            newTokenAuctionParams.duration + newTokenAuctionParams.overtime;
 
         require(
             newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
@@ -121,12 +124,13 @@ contract NonReservedNativeTokenManager {
 
         // Extend the auction if the last bid is too close to end time.
         if (endTime - now < OVERTIME_PERIOD) {
-            newTokenAuctionParams.duration += OVERTIME_PERIOD;
+            newTokenAuctionParams.overtime += OVERTIME_PERIOD;
         }
     }
 
     function newTokenAuctionEnd() public {
-        uint64 endTime = newTokenAuctionParams.startTime + newTokenAuctionParams.duration;
+        uint64 endTime = newTokenAuctionParams.startTime +
+            newTokenAuctionParams.duration + newTokenAuctionParams.overtime;
         require(now >= endTime, "Auction has not ended.");
 
         address highestBidder = newTokenAuction.highestBidder;
@@ -138,6 +142,7 @@ contract NonReservedNativeTokenManager {
         // Set newTokenAuction to default 0
         newTokenAuction.highestBidder = address(0);
         newTokenAuctionParams.startTime = 0;
+        newTokenAuctionParams.overtime = 0;
     }
 
     function mintNewToken(uint128 tokenId) public {
