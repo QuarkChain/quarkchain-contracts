@@ -7,23 +7,21 @@ contract NonReservedNativeTokenManager {
     // 5 min overtime auction extension to avoid sniping
     uint64 constant OVERTIME_PERIOD = 300;
 
-    // Union type for auction bids (new token or gas reserve)
     struct Bid {
-        // new token
         uint128 tokenId;
         uint128 newTokenPrice;
+        address bidder;
     }
 
     struct Auction {
-        address highestBidder;
+        uint64 round;
+        uint64 overtime;
+        uint128 startTime;
         Bid highestBid;
     }
 
     struct AuctionParams {
-        uint64 round;
-        uint64 startTime;
-        uint64 duration;
-        uint64 overtime;
+        uint128 duration;
         // Following are new token auction specific
         uint64 minIncrementInQKC;
         uint64 minPriceInQKC;
@@ -39,17 +37,11 @@ contract NonReservedNativeTokenManager {
     // Whether to allow token auction winners to mint. Should only enable in shard 0
     bool public allowMint;
 
-    // Parameters for new token auction
-    Auction public newTokenAuction;
-    AuctionParams public newTokenAuctionParams;
-
-    mapping (uint128 => Auction) public gasReserves;
-    uint256 public minGasReserve;
+    Auction public auction;
+    AuctionParams public auctionParams;
 
     mapping (uint128 => NativeToken) public nativeTokens;
-    mapping (address => uint256) public newTokenAuctionBalance;
-    mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
-    mapping (uint128 => mapping (address => uint256)) public nativeTokenBalances;
+    mapping (address => uint256) public balance;
 
     event AuctionEnded(
         address winner,
@@ -61,12 +53,7 @@ contract NonReservedNativeTokenManager {
         allowMint = _allowMint;
     }
 
-    function setMinReserve(uint256 _minGasReserve) public {
-        require(msg.sender == supervisor, "Only supervisor can set minGasReserve");
-        minGasReserve = _minGasReserve;
-    }
-
-    function newTokenAuctionSetter(
+    function setAuctionParams(
         uint64 _minPriceInQKC,
         uint64 _minIncrementInQKC,
         uint64 _duration
@@ -75,84 +62,86 @@ contract NonReservedNativeTokenManager {
     {
         require(msg.sender == supervisor, "Only account in whitelist can set auction details.");
         require(
-            newTokenAuctionParams.startTime == 0,
+            auction.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
         );
-        newTokenAuctionParams.minPriceInQKC = _minPriceInQKC;
-        newTokenAuctionParams.minIncrementInQKC = _minIncrementInQKC;
-        newTokenAuctionParams.duration = _duration;
+        auctionParams.minPriceInQKC = _minPriceInQKC;
+        auctionParams.minIncrementInQKC = _minIncrementInQKC;
+        auctionParams.duration = _duration;
     }
 
-    function bidNewToken(uint128 tokenId, uint128 newTokenPrice, uint64 round) public payable {
-        if (newTokenAuctionParams.startTime == 0) {
-            // Auction hasn't started. Start now.
-            newTokenAuctionParams.startTime = uint64(now);
-        } else if (uint64(now) > newTokenAuctionParams.startTime + newTokenAuctionParams.duration +
-                   newTokenAuctionParams.overtime) {
-            // End last round of auction.
-            newTokenAuctionEnd();
-            // Start a new round of auction.
-            newTokenAuctionParams.startTime = uint64(now);
+    function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
+        if (auction.startTime == 0) {
+            // Auction hasn't started. Start now
+            auction.startTime = uint64(now);
+        } else if (uint64(now) > auction.startTime + auctionParams.duration +
+                   auction.overtime) {
+            // End last round of auction, such that stale round will be rejected
+            endAuction();
+            // Start a new round of auction
+            auction.startTime = uint64(now);
         }
 
         require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
         require(
-            round == newTokenAuctionParams.round,
+            round == auction.round,
             "Target round of auction has ended or not started."
         );
 
-        uint64 endTime = newTokenAuctionParams.startTime +
-            newTokenAuctionParams.duration + newTokenAuctionParams.overtime;
+        uint128 endTime = auction.startTime +
+            auctionParams.duration + auction.overtime;
 
         require(
-            newTokenPrice >= newTokenAuctionParams.minPriceInQKC * 1 ether,
+            price >= auctionParams.minPriceInQKC * 1 ether,
             "Bid price should be larger than minimum bid price."
         );
         require(
-            newTokenPrice >= newTokenAuction.highestBid.newTokenPrice +
-                newTokenAuctionParams.minIncrementInQKC * 1 ether,
+            price >= auction.highestBid.newTokenPrice +
+                auctionParams.minIncrementInQKC * 1 ether,
             "Bid price should be larger than current highest bid with increment."
         );
 
-        Bid memory bid;
-        bid.tokenId = uint128(tokenId);
-        bid.newTokenPrice = uint128(newTokenPrice);
-
         address bidder = msg.sender;
-        uint256 newBalance = newTokenAuctionBalance[bidder] + msg.value;
-        require(newBalance >= msg.value, "Addition overflow");
-        newTokenAuctionBalance[bidder] = newBalance;
-        require(newTokenAuctionBalance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
+        Bid memory bid = Bid({
+            tokenId: uint128(tokenId),
+            newTokenPrice: uint128(price),
+            bidder: bidder
+        });
+        uint256 newBalance = balance[bidder] + msg.value;
+        require(newBalance >= msg.value, "Addition overflow.");
+        balance[bidder] = newBalance;
+        require(balance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
         // Win the bid!
-        newTokenAuction.highestBid = bid;
-        newTokenAuction.highestBidder = bidder;
+        auction.highestBid = bid;
 
         // Extend the auction if the last bid is too close to end time.
         if (endTime - now < OVERTIME_PERIOD) {
-            newTokenAuctionParams.overtime += OVERTIME_PERIOD;
+            auction.overtime += OVERTIME_PERIOD;
         }
     }
 
-    function newTokenAuctionEnd() public {
-        uint64 endTime = newTokenAuctionParams.startTime +
-            newTokenAuctionParams.duration + newTokenAuctionParams.overtime;
+    function endAuction() public {
+        uint128 endTime = auction.startTime +
+            auctionParams.duration + auction.overtime;
         require(now >= endTime, "Auction has not ended.");
 
-        address highestBidder = newTokenAuction.highestBidder;
-        Bid memory highestBid = newTokenAuction.highestBid;
-        newTokenAuctionBalance[highestBidder] -= highestBid.newTokenPrice;
-        nativeTokens[highestBid.tokenId].owner = highestBidder;
-        emit AuctionEnded(highestBidder, highestBid.tokenId);
+        require(
+            balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice,
+            "Should have enough balance."
+        );
+        balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
+        nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
+        emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
-        // Set newTokenAuction to default 0
-        newTokenAuction.highestBidder = address(0);
-        newTokenAuction.highestBid.newTokenPrice = 0;
-        newTokenAuctionParams.startTime = 0;
-        newTokenAuctionParams.overtime = 0;
+        // Set auction to default values
+        auction.highestBid.newTokenPrice = 0;
+        auction.highestBid.bidder = address(0);
+        auction.startTime = 0;
+        auction.overtime = 0;
 
         // Auction counter increasement
-        newTokenAuctionParams.round += 1;
+        auction.round += 1;
     }
 
     function mintNewToken(uint128 tokenId) public {
@@ -168,17 +157,17 @@ contract NonReservedNativeTokenManager {
         nativeTokens[tokenId].owner = newOwner;
     }
 
-    function withdrawTokenBid() public {
+    function withdraw() public {
         // Those doesn't win the bid should be able to get back their funds
         // Note: losing bidders may withdraw their funds at any time, even before the action is over
         require(
-            msg.sender != newTokenAuction.highestBidder,
+            msg.sender != auction.highestBid.bidder,
             "Highest bidder cannot withdraw balance till the end of this auction."
         );
 
-        uint256 amount = newTokenAuctionBalance[msg.sender];
+        uint256 amount = balance[msg.sender];
         require(amount > 0, "No balance available to withdraw.");
-        newTokenAuctionBalance[msg.sender] = 0;
+        balance[msg.sender] = 0;
         msg.sender.transfer(amount);
     }
 }

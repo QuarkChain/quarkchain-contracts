@@ -58,16 +58,16 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
   });
 
   it('should handle new token bid successfully', async () => {
-    await manager.newTokenAuctionSetter(5, 2, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.setAuctionParams(5, 2, 7 * 3600 * 24, { from: accounts[0] });
 
     // ----------------------- ROUND 0 -----------------------
     // One bidder place a bid.
     await manager.bidNewToken(990, toWei(5), 0, { from: accounts[1], value: toWei(5) });
     await addDaysOnEVM(6);
-    await manager.newTokenAuctionEnd().should.be.rejectedWith(revertError);
+    await manager.endAuction().should.be.rejectedWith(revertError);
     await addDaysOnEVM(2);
 
-    // Though end time comes, newTokenAuctionEnd() hasn't been triggered.
+    // Though end time comes, endAuction() hasn't been triggered.
     // So winner info of this auction hasn't been updated yet.
     let nativeToken = await manager.nativeTokens(990);
     assert.equal(nativeToken.owner, `0x${'0'.repeat(40)}`);
@@ -99,19 +99,19 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
 
     // Bidder 1 tries to withdraw the depost, should fail.
-    await manager.withdrawTokenBid({ from: accounts[1] }).should.be.rejectedWith(revertError);
+    await manager.withdraw({ from: accounts[1] }).should.be.rejectedWith(revertError);
     // Bidder 2 place yet another valid bid, should success.
     await manager.bidNewToken(992, toWei(9), 1, { from: accounts[2], value: toWei(4) });
     // Bidder 1 tries to withdraw the depost, should success.
-    await manager.withdrawTokenBid({ from: accounts[1] });
+    await manager.withdraw({ from: accounts[1] });
 
     await addDaysOnEVM(7);
     // The auction ends, Bidder 2 wins.
-    await manager.newTokenAuctionEnd();
+    await manager.endAuction();
     nativeToken = await manager.nativeTokens(992);
     assert.equal(nativeToken.owner, accounts[2]);
     // Bidder 2 tries to withdraw the depost, should fail because the balance is 0.
-    await manager.withdrawTokenBid({ from: accounts[2] }).should.be.rejectedWith(revertError);
+    await manager.withdraw({ from: accounts[2] }).should.be.rejectedWith(revertError);
 
     // ----------------------- ROUND 2 -----------------------
     // Test for time extension when last-minute bid happens.
@@ -119,9 +119,9 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await addMinutesOnEVM(10080 - 3); // 60 * 24 * 7 - 3
     await manager.bidNewToken(994, toWei(8), 2, { from: accounts[4], value: toWei(8) });
     await addMinutesOnEVM(5);
-    await manager.newTokenAuctionEnd().should.be.rejectedWith(revertError);
+    await manager.endAuction().should.be.rejectedWith(revertError);
     await addMinutesOnEVM(3);
-    await manager.newTokenAuctionEnd();
+    await manager.endAuction();
     nativeToken = await manager.nativeTokens(993);
     assert.equal(nativeToken.owner, 0);
     nativeToken = await manager.nativeTokens(994);
