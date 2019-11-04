@@ -79,21 +79,37 @@ contract('StakingPool', async (accounts) => {
     assert.equal(poolBalance, 0);
   });
 
-  it('should calculate payout correctly', async () => {
+  it('should calculate dividends correctly', async () => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
     await forceSend(pool.address, toWei(8));
-    const poolBalance = await web3.eth.getBalance(pool.address);
+    let poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, toWei(50));
     // State has not been updated.
     let minerReward = await pool.minerReward();
     assert.equal(minerReward, 0);
+    const stakerInfo = await pool.stakerInfo(accounts[0]);
+    let stakes = stakerInfo[0];
+    assert.equal(stakes, toWei(42));
     // But dividend should reflect the change.
     const dividend = await pool.getDividend();
     assert.equal(dividend, toWei(8));
+    // Or stakers can calculate their stakes with dividends.
+    stakes = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakes, toWei(42 + (8 / 2)));
     // Update internal state.
     await pool.calculatePayout();
     minerReward = await pool.minerReward();
     // 50% of coinbase rewards goes to miner.
     assert.equal(minerReward, toWei(4));
+    // Stakers can withdraw.
+    await pool.withdrawStakes(toWei(47)).should.be.rejectedWith(revertError);
+    await pool.withdrawStakes(toWei(46));
+    // Pool balance should update.
+    poolBalance = await web3.eth.getBalance(pool.address);
+    assert.equal(poolBalance, toWei(4));
+    // Miner can withdraw as well.
+    await pool.withdrawMinerReward({ from: miner });
+    poolBalance = await web3.eth.getBalance(pool.address);
+    assert.equal(poolBalance, 0);
   });
 });

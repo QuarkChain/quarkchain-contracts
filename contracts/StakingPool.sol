@@ -12,7 +12,7 @@ contract StakingPool {
     address[] public stakers;
     uint256 public totalStakes;
     address payable public miner;
-    // Miner reward rate in basis point.
+    // Miner reward rate in basis point
     uint256 public feeRateBp;
     uint256 public minerReward;
     uint128 public maxStakers;
@@ -25,7 +25,7 @@ contract StakingPool {
     }
 
     function getDividend() public view returns (uint256) {
-        return address(this).balance - totalStakes;
+        return address(this).balance - totalStakes - minerReward;
     }
 
     function totalStakerSize() public view returns (uint256) {
@@ -82,6 +82,9 @@ contract StakingPool {
 
     function calculatePayout() public {
         uint256 dividend = getDividend();
+        if (dividend == 0) {
+            return;
+        }
         uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
         uint256 totalPaid = 0;
         for (uint16 i = 0; i < stakers.length; i++) {
@@ -97,5 +100,13 @@ contract StakingPool {
         minerReward += dividend - totalPaid;
 
         require(address(this).balance >= totalStakes, "Balance should be more than stakes.");
+    }
+
+    function calculateStakesWithDividend(address staker) public view returns (uint256) {
+        uint256 dividend = getDividend();
+        uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
+        StakerInfo storage info = stakerInfo[staker];
+        uint256 toPay = info.stakes * stakerPayout / totalStakes;
+        return info.stakes + toPay;
     }
 }

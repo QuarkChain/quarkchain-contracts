@@ -98,11 +98,11 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.bidNewToken(992, toWei(9), 2, { from: accounts[2], value: toWei(9) })
       .should.be.rejectedWith(revertError);
 
-    // Bidder 1 tries to withdraw the depost, should fail.
+    // Bidder 1 tries to withdraw the deposit, should fail.
     await manager.withdraw({ from: accounts[1] }).should.be.rejectedWith(revertError);
     // Bidder 2 place yet another valid bid, should success.
     await manager.bidNewToken(992, toWei(9), 1, { from: accounts[2], value: toWei(4) });
-    // Bidder 1 tries to withdraw the depost, should success.
+    // Bidder 1 tries to withdraw the deposit, should success.
     await manager.withdraw({ from: accounts[1] });
 
     await addDaysOnEVM(7);
@@ -110,7 +110,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.endAuction();
     nativeToken = await manager.nativeTokens(992);
     assert.equal(nativeToken.owner, accounts[2]);
-    // Bidder 2 tries to withdraw the depost, should fail because the balance is 0.
+    // Bidder 2 tries to withdraw the deposit, should fail because the balance is 0.
     await manager.withdraw({ from: accounts[2] }).should.be.rejectedWith(revertError);
 
     // ----------------------- ROUND 2 -----------------------
