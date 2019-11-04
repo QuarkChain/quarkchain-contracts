@@ -84,8 +84,6 @@ contract NonReservedNativeTokenManager {
     }
 
     function bidNewToken(uint128 tokenId, uint128 newTokenPrice, uint64 round) public payable {
-        require(nativeTokens[tokenId].owner == address(0), "Token should be available.");
-
         if (newTokenAuctionParams.startTime == 0) {
             // Auction hasn't started. Start now.
             newTokenAuctionParams.startTime = uint64(now);
@@ -97,9 +95,10 @@ contract NonReservedNativeTokenManager {
             newTokenAuctionParams.startTime = uint64(now);
         }
 
+        require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
         require(
             round == newTokenAuctionParams.round,
-            "Your target round of auction has ended or haven't started."
+            "Target round of auction has ended or not started."
         );
 
         uint64 endTime = newTokenAuctionParams.startTime +
@@ -148,6 +147,7 @@ contract NonReservedNativeTokenManager {
 
         // Set newTokenAuction to default 0
         newTokenAuction.highestBidder = address(0);
+        newTokenAuction.highestBid.newTokenPrice = 0;
         newTokenAuctionParams.startTime = 0;
         newTokenAuctionParams.overtime = 0;
 

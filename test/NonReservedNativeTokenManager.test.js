@@ -22,6 +22,16 @@ async function addDaysOnEVM(days) {
   });
 }
 
+async function addMinutesOnEVM(minutes) {
+  const seconds = minutes * 60;
+  await web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_increaseTime', params: [seconds], id: 0,
+  });
+  await web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0,
+  });
+}
+
 function snapshotEVM() {
   return web3SendAsync({
     jsonrpc: '2.0', method: 'evm_snapshot', id: Date.now() + 1,
@@ -63,12 +73,17 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, `0x${'0'.repeat(40)}`);
 
     // ----------------------- ROUND 1 -----------------------
-    // Bidder 1 places a bid, should success.
-    await manager.bidNewToken(991, toWei(7), 1, { from: accounts[1], value: toWei(7) });
-    // The bid from Bidder 1 triggers the end of last round auction and
+    // Bidder 2 places a bid, should success.
+    await manager.bidNewToken(992, toWei(5), 1, { from: accounts[2], value: toWei(5) });
+    // The bid above triggers the end of last round of auction and
     // a new round of auction starts.
     nativeToken = await manager.nativeTokens(990);
     assert.equal(nativeToken.owner, accounts[1]);
+    // Bidder 1 places a bid for token 990 again, should fail.
+    await manager.bidNewToken(990, toWei(7), 1, { from: accounts[1], value: toWei(7) })
+      .should.be.rejectedWith(revertError);
+    // Bidder 1 outbids with different token id.
+    await manager.bidNewToken(991, toWei(7), 1, { from: accounts[1], value: toWei(7) });
 
     // Bidder 2 places another bid with lower price, should fail.
     await manager.bidNewToken(992, toWei(6), 1, { from: accounts[2], value: toWei(6) })
@@ -86,7 +101,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     // Bidder 1 tries to withdraw the depost, should fail.
     await manager.withdrawTokenBid({ from: accounts[1] }).should.be.rejectedWith(revertError);
     // Bidder 2 place yet another valid bid, should success.
-    await manager.bidNewToken(992, toWei(9), 1, { from: accounts[2], value: toWei(9) });
+    await manager.bidNewToken(992, toWei(9), 1, { from: accounts[2], value: toWei(4) });
     // Bidder 1 tries to withdraw the depost, should success.
     await manager.withdrawTokenBid({ from: accounts[1] });
 
@@ -97,5 +112,19 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, accounts[2]);
     // Bidder 2 tries to withdraw the depost, should fail because the balance is 0.
     await manager.withdrawTokenBid({ from: accounts[2] }).should.be.rejectedWith(revertError);
+
+    // ----------------------- ROUND 2 -----------------------
+    // Test for time extension when last-minute bid happens.
+    await manager.bidNewToken(993, toWei(5), 2, { from: accounts[3], value: toWei(5) });
+    await addMinutesOnEVM(10080 - 3); // 60 * 24 * 7 - 3
+    await manager.bidNewToken(994, toWei(8), 2, { from: accounts[4], value: toWei(8) });
+    await addMinutesOnEVM(5);
+    await manager.newTokenAuctionEnd().should.be.rejectedWith(revertError);
+    await addMinutesOnEVM(3);
+    await manager.newTokenAuctionEnd();
+    nativeToken = await manager.nativeTokens(993);
+    assert.equal(nativeToken.owner, 0);
+    nativeToken = await manager.nativeTokens(994);
+    assert.equal(nativeToken.owner, accounts[4]);
   });
 });
