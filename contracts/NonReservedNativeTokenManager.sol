@@ -152,7 +152,7 @@ contract NonReservedNativeTokenManager {
         newTokenAuctionParams.overtime = 0;
 
         // Auction counter increasement
-        newTokenAuctionParams.round += uint64(1);
+        newTokenAuctionParams.round += 1;
     }
 
     function mintNewToken(uint128 tokenId) public {
