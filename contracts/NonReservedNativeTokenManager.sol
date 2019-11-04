@@ -20,6 +20,7 @@ contract NonReservedNativeTokenManager {
     }
 
     struct AuctionParams {
+        uint64 round;
         uint64 startTime;
         uint64 duration;
         uint64 overtime;
@@ -82,7 +83,7 @@ contract NonReservedNativeTokenManager {
         newTokenAuctionParams.duration = _duration;
     }
 
-    function bidNewToken(uint128 tokenId, uint128 newTokenPrice) public payable {
+    function bidNewToken(uint128 tokenId, uint128 newTokenPrice, uint64 round) public payable {
         require(nativeTokens[tokenId].owner == address(0), "Token should be available.");
 
         if (newTokenAuctionParams.startTime == 0) {
@@ -95,6 +96,12 @@ contract NonReservedNativeTokenManager {
             // Start a new round of auction.
             newTokenAuctionParams.startTime = uint64(now);
         }
+
+        require(
+            round == newTokenAuctionParams.round,
+            "Your target round of auction has ended or haven't started."
+        );
+
         uint64 endTime = newTokenAuctionParams.startTime +
             newTokenAuctionParams.duration + newTokenAuctionParams.overtime;
 
@@ -143,6 +150,9 @@ contract NonReservedNativeTokenManager {
         newTokenAuction.highestBidder = address(0);
         newTokenAuctionParams.startTime = 0;
         newTokenAuctionParams.overtime = 0;
+
+        // Auction counter increasement
+        newTokenAuctionParams.round += uint64(1);
     }
 
     function mintNewToken(uint128 tokenId) public {
@@ -165,8 +175,10 @@ contract NonReservedNativeTokenManager {
             msg.sender != newTokenAuction.highestBidder,
             "Highest bidder cannot withdraw balance till the end of this auction."
         );
-        // uint256 amount = nativeTokenBalances[msg.sender];
-        // nativeTokenBalances[msg.sender] = 0;
-        // msg.sender.transfer(amount);
+
+        uint256 amount = newTokenAuctionBalance[msg.sender];
+        require(amount > 0, "No balance available to withdraw.");
+        newTokenAuctionBalance[msg.sender] = 0;
+        msg.sender.transfer(amount);
     }
 }
