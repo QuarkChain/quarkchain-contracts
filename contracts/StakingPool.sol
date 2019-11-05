@@ -41,7 +41,7 @@ contract StakingPool {
 
     // Add stakes
     function () external payable {
-        calclatePayoutWithMessage(msg.value);
+        calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
@@ -89,11 +89,7 @@ contract StakingPool {
     }
 
     function calculatePayout() private {
-        calclatePayoutWithMessage(0);
-    }
-
-    function calclatePayoutWithMessage(uint256 msgValue) private {
-        uint256 balance = address(this).balance - msgValue;
+        uint256 balance = address(this).balance - msg.value;
         uint256 dividend = getDividend(balance);
         if (dividend == 0) {
             return;
