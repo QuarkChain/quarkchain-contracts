@@ -24,8 +24,8 @@ contract StakingPool {
         maxStakers = _maxStakers;
     }
 
-    function getDividend() public view returns (uint256) {
-        return address(this).balance - totalStakes - minerReward;
+    function getDividend(uint256 balance) public view returns (uint256) {
+        return balance - totalStakes - minerReward;
     }
 
     function totalStakerSize() public view returns (uint256) {
@@ -34,6 +34,7 @@ contract StakingPool {
 
     // Add stakes
     function () external payable {
+        calclatePayoutWithMessage(msg.value);
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
@@ -45,10 +46,10 @@ contract StakingPool {
         info.stakes += uint128(msg.value);
         totalStakes += msg.value;
         require(totalStakes >= msg.value, "Addition overflow.");
-        calculatePayout();
     }
 
     function withdrawStakes(uint128 amount) public {
+        calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes -= amount;
@@ -62,8 +63,6 @@ contract StakingPool {
             stakers.length--;
             delete stakerInfo[msg.sender];
         }
-
-        calculatePayout();
     }
 
     function withdrawMinerReward() public {
@@ -80,8 +79,14 @@ contract StakingPool {
         miner = _miner;
     }
 
-    function calculatePayout() public {
-        uint256 dividend = getDividend();
+    function calculatePayout() private {
+        calclatePayoutWithMessage(0);
+    }
+
+    function calclatePayoutWithMessage(uint256 msgValue) private {
+        uint256 balance = address(this).balance - msgValue;
+        uint256 dividend = getDividend(balance);
+        // TODO safemath
         if (dividend == 0) {
             return;
         }
@@ -99,11 +104,11 @@ contract StakingPool {
 
         minerReward += dividend - totalPaid;
 
-        require(address(this).balance >= totalStakes, "Balance should be more than stakes.");
+        require(balance >= totalStakes, "Balance should be more than stakes.");
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
-        uint256 dividend = getDividend();
+        uint256 dividend = getDividend(address(this).balance);
         uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
         StakerInfo storage info = stakerInfo[staker];
         uint256 toPay = info.stakes * stakerPayout / totalStakes;
