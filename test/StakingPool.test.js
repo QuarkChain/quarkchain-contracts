@@ -154,4 +154,24 @@ contract('StakingPool', async (accounts) => {
     minerReward = await pool.estimateMinerReward();
     assert.equal(minerReward, toWei(20 / 2));
   });
+
+  it('should handle no staker case', async () => {
+    await forceSend(pool.address, toWei(10));
+    let minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(0));
+    minerReward = await pool.estimateMinerReward();
+    assert.equal(minerReward, toWei(10));
+    // Now adding a new staker, while miner's fee shouldn't be affected.
+    await pool.sendTransaction(txGen(accounts[0], toWei(10)));
+    minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(10));
+    minerReward = await pool.estimateMinerReward();
+    assert.equal(minerReward, toWei(10));
+    // Now, new rewards should be distributed evenly.
+    await forceSend(pool.address, toWei(4));
+    minerReward = await pool.estimateMinerReward();
+    assert.equal(minerReward, toWei(10 + (4 / 2)));
+    const stakes = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakes, toWei(10 + (4 / 2)));
+  });
 });

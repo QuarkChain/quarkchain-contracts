@@ -93,7 +93,10 @@ contract StakingPool {
 
     function estimateMinerReward() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance);
-        return minerReward + dividend.mul(feeRateBp).div(MAX_BP);
+        if (stakers.length > 0) {
+            dividend = dividend.mul(feeRateBp).div(MAX_BP);
+        }
+        return minerReward.add(dividend);
     }
 
     function calculatePayout() private {
