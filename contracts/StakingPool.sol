@@ -30,11 +30,6 @@ contract StakingPool {
         maxStakers = _maxStakers;
     }
 
-    function getDividend(uint256 balance) public view returns (uint256) {
-        require(balance >= totalStakes + minerReward, "Should have enough balance.");
-        return balance - totalStakes - minerReward;
-    }
-
     function totalStakerSize() public view returns (uint256) {
         return stakers.length;
     }
@@ -88,7 +83,21 @@ contract StakingPool {
         miner = _miner;
     }
 
+    function calculateStakesWithDividend(address staker) public view returns (uint256) {
+        uint256 dividend = getDividend(address(this).balance);
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        StakerInfo storage info = stakerInfo[staker];
+        uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
+        return info.stakes + toPay;
+    }
+
+    function estimateMinerReward() public view returns (uint256) {
+        uint256 dividend = getDividend(address(this).balance);
+        return minerReward + dividend.mul(feeRateBp).div(MAX_BP);
+    }
+
     function calculatePayout() private {
+        // When adding stakes, need to exclude the current message
         uint256 balance = address(this).balance - msg.value;
         uint256 dividend = getDividend(balance);
         if (dividend == 0) {
@@ -109,11 +118,8 @@ contract StakingPool {
         require(balance >= totalStakes, "Balance should be more than stakes.");
     }
 
-    function calculateStakesWithDividend(address staker) public view returns (uint256) {
-        uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
-        StakerInfo storage info = stakerInfo[staker];
-        uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
-        return info.stakes + toPay;
+    function getDividend(uint256 balance) private view returns (uint256) {
+        require(balance >= totalStakes + minerReward, "Should have enough balance.");
+        return balance - totalStakes - minerReward;
     }
 }

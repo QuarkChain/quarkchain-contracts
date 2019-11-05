@@ -40,9 +40,6 @@ contract('StakingPool', async (accounts) => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
     const minerReward = await pool.minerReward();
     assert.equal(minerReward, 0);
-    const poolBalance = await web3.eth.getBalance(pool.address);
-    const dividend = await pool.getDividend(poolBalance);
-    assert.equal(dividend, 0);
     let stakerNumber = await pool.totalStakerSize();
     assert.equal(stakerNumber, 1);
     const staker = await pool.stakers(0);
@@ -92,11 +89,7 @@ contract('StakingPool', async (accounts) => {
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     let stakes = stakerInfo[0];
     assert.equal(stakes, toWei(42));
-    // But dividend should reflect the change.
-    poolBalance = await web3.eth.getBalance(pool.address);
-    const dividend = await pool.getDividend(poolBalance);
-    assert.equal(dividend, toWei(8));
-    // Or stakers can calculate their stakes with dividends.
+    // Stakers can calculate their stakes with dividends.
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, toWei(42 + (8 / 2)));
     // Calculate amount of dividends and let the staker withdraw, which will update the state.
@@ -141,7 +134,7 @@ contract('StakingPool', async (accounts) => {
     assert.equal(stakes, toWei(20));
     // 3. Check miner.
     const minerBalanceBefore = await web3.eth.getBalance(miner);
-    const minerReward = await pool.minerReward();
+    let minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(5));
     // But should be able to withdraw his/her rewards.
     await pool.withdrawMinerReward({ from: miner, gasPrice: 0 });
@@ -150,5 +143,15 @@ contract('StakingPool', async (accounts) => {
     assert.equal(diff, 5);
     // Prev staker should also be able to withdraw stakes + dividends.
     await pool.withdrawStakes(toWei(15));
+    // After a new round of mining rewards, only the miner and the new staker should have dividends.
+    await forceSend(pool.address, toWei(20));
+    stakes = await pool.calculateStakesWithDividend(newStaker);
+    assert.equal(stakes, toWei(20 + (20 / 2)));
+    stakes = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakes, 0);
+    minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(0));
+    minerReward = await pool.estimateMinerReward();
+    assert.equal(minerReward, toWei(20 / 2));
   });
 });
