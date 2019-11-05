@@ -59,6 +59,7 @@ contract StakingPool {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
+        require(stakers[info.arrPos] == msg.sender, "Staker should match.");
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes -= amount;
         totalStakes -= amount;
@@ -99,7 +100,7 @@ contract StakingPool {
         }
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
-        for (uint16 i = 0; i < stakers.length; i++) {
+        for (uint128 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
             uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
             totalPaid = totalPaid.add(toPay);
