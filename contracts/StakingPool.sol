@@ -56,6 +56,7 @@ contract StakingPool {
     }
 
     function withdrawStakes(uint128 amount) public {
+        require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
