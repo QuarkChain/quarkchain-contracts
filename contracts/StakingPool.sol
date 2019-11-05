@@ -12,6 +12,8 @@ contract StakingPool {
         uint128 arrPos;
     }
 
+    uint256 constant MAX_BP = 10000;
+
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     uint256 public totalStakes;
@@ -22,7 +24,7 @@ contract StakingPool {
     uint128 public maxStakers;
 
     constructor(address payable _miner, uint256 _feeRateBp, uint128 _maxStakers) public {
-        require(_feeRateBp <= 10000, "Fee rate should be in basis point.");
+        require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         miner = _miner;
         feeRateBp = _feeRateBp;
         maxStakers = _maxStakers;
@@ -94,7 +96,7 @@ contract StakingPool {
         if (dividend == 0) {
             return;
         }
-        uint256 stakerPayout = dividend.mul(10000 - feeRateBp).div(10000);
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
         for (uint16 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
@@ -111,7 +113,7 @@ contract StakingPool {
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend.mul(10000 - feeRateBp).div(10000);
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         StakerInfo storage info = stakerInfo[staker];
         uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
         return info.stakes + toPay;
