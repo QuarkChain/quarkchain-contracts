@@ -24,6 +24,7 @@
     "eslint-plugin-mocha": "^5.0.0",
     "husky": "^3.0.9",
     "mem": "^5.1.1",
+    "openzeppelin-solidity": "^2.4.0",
     "solium": "^1.2.5",
     "truffle": "^5.0.42",
     "web3": "^1.2.2"
