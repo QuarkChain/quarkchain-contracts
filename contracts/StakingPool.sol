@@ -1,7 +1,11 @@
 pragma solidity >0.4.99 <0.6.0;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+
 
 contract StakingPool {
+
+    using SafeMath for uint256;
 
     struct StakerInfo {
         uint128 stakes;
@@ -25,6 +29,7 @@ contract StakingPool {
     }
 
     function getDividend(uint256 balance) public view returns (uint256) {
+        require(balance >= totalStakes + minerReward, "Should have enough balance.");
         return balance - totalStakes - minerReward;
     }
 
@@ -44,7 +49,7 @@ contract StakingPool {
         }
 
         info.stakes += uint128(msg.value);
-        totalStakes += msg.value;
+        totalStakes = totalStakes.add(msg.value);
         require(totalStakes >= msg.value, "Addition overflow.");
     }
 
@@ -86,32 +91,29 @@ contract StakingPool {
     function calclatePayoutWithMessage(uint256 msgValue) private {
         uint256 balance = address(this).balance - msgValue;
         uint256 dividend = getDividend(balance);
-        // TODO safemath
         if (dividend == 0) {
             return;
         }
-        uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
+        uint256 stakerPayout = dividend.mul(10000 - feeRateBp).div(10000);
         uint256 totalPaid = 0;
         for (uint16 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
-            uint256 toPay = info.stakes * stakerPayout / totalStakes;
-            totalPaid += toPay;
+            uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
+            totalPaid = totalPaid.add(toPay);
             info.stakes += uint128(toPay);
         }
 
-        totalStakes += totalPaid;
-        require(totalStakes >= totalPaid, "Addition overflow.");
-
-        minerReward += dividend - totalPaid;
+        totalStakes = totalStakes.add(totalPaid);
+        minerReward = minerReward.add(dividend - totalPaid);
 
         require(balance >= totalStakes, "Balance should be more than stakes.");
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend * (10000 - feeRateBp) / 10000;
+        uint256 stakerPayout = dividend.mul(10000 - feeRateBp).div(10000);
         StakerInfo storage info = stakerInfo[staker];
-        uint256 toPay = info.stakes * stakerPayout / totalStakes;
+        uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
         return info.stakes + toPay;
     }
 }
