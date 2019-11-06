@@ -30,18 +30,13 @@ contract StakingPool {
         maxStakers = _maxStakers;
     }
 
-    function getDividend(uint256 balance) public view returns (uint256) {
-        require(balance >= totalStakes + minerReward, "Should have enough balance.");
-        return balance - totalStakes - minerReward;
-    }
-
-    function totalStakerSize() public view returns (uint256) {
+    function poolSize() public view returns (uint256) {
         return stakers.length;
     }
 
     // Add stakes
     function () external payable {
-        calclatePayoutWithMessage(msg.value);
+        calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
@@ -88,12 +83,28 @@ contract StakingPool {
         miner = _miner;
     }
 
-    function calculatePayout() private {
-        calclatePayoutWithMessage(0);
+    function calculateStakesWithDividend(address staker) public view returns (uint256) {
+        if (totalStakes == 0) {
+            return 0;
+        }
+        uint256 dividend = getDividend(address(this).balance);
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        StakerInfo storage info = stakerInfo[staker];
+        uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
+        return info.stakes + toPay;
     }
 
-    function calclatePayoutWithMessage(uint256 msgValue) private {
-        uint256 balance = address(this).balance - msgValue;
+    function estimateMinerReward() public view returns (uint256) {
+        uint256 dividend = getDividend(address(this).balance);
+        if (stakers.length > 0) {
+            dividend = dividend.mul(feeRateBp).div(MAX_BP);
+        }
+        return minerReward.add(dividend);
+    }
+
+    function calculatePayout() private {
+        // When adding stakes, need to exclude the current message
+        uint256 balance = address(this).balance - msg.value;
         uint256 dividend = getDividend(balance);
         if (dividend == 0) {
             return;
@@ -113,11 +124,8 @@ contract StakingPool {
         require(balance >= totalStakes, "Balance should be more than stakes.");
     }
 
-    function calculateStakesWithDividend(address staker) public view returns (uint256) {
-        uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
-        StakerInfo storage info = stakerInfo[staker];
-        uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
-        return info.stakes + toPay;
+    function getDividend(uint256 balance) private view returns (uint256) {
+        require(balance >= totalStakes + minerReward, "Should have enough balance.");
+        return balance - totalStakes - minerReward;
     }
 }
