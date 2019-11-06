@@ -54,7 +54,7 @@ contract StakingPool {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
-        require(stakers[info.arrPos] == msg.sender, "Staker should match.");
+        assert(stakers[info.arrPos] == msg.sender);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes -= amount;
         totalStakes -= amount;
