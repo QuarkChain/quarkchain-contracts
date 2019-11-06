@@ -8,8 +8,8 @@ contract StakingPool {
     using SafeMath for uint256;
 
     struct StakerInfo {
-        uint128 stakes;
-        uint128 arrPos;
+        uint256 stakes;
+        uint256 arrPos;
     }
 
     uint256 constant MAX_BP = 10000;
@@ -21,9 +21,9 @@ contract StakingPool {
     // Miner reward rate in basis point
     uint256 public feeRateBp;
     uint256 public minerReward;
-    uint128 public maxStakers;
+    uint256 public maxStakers;
 
-    constructor(address payable _miner, uint256 _feeRateBp, uint128 _maxStakers) public {
+    constructor(address payable _miner, uint256 _feeRateBp, uint256 _maxStakers) public {
         require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         miner = _miner;
         feeRateBp = _feeRateBp;
@@ -41,20 +41,20 @@ contract StakingPool {
         // New staker
         if (info.stakes == 0) {
             require(stakers.length < maxStakers, "Too many stakers.");
-            info.arrPos = uint128(stakers.length);
+            info.arrPos = stakers.length;
             stakers.push(msg.sender);
         }
 
-        info.stakes += uint128(msg.value);
+        info.stakes += msg.value;
         totalStakes = totalStakes.add(msg.value);
         require(totalStakes >= msg.value, "Addition overflow.");
     }
 
-    function withdrawStakes(uint128 amount) public {
+    function withdrawStakes(uint256 amount) public {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
-        require(stakers[info.arrPos] == msg.sender, "Staker should match.");
+        assert(stakers[info.arrPos] == msg.sender);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes -= amount;
         totalStakes -= amount;
@@ -111,11 +111,11 @@ contract StakingPool {
         }
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
-        for (uint128 i = 0; i < stakers.length; i++) {
+        for (uint256 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
             uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
             totalPaid = totalPaid.add(toPay);
-            info.stakes += uint128(toPay);
+            info.stakes += toPay;
         }
 
         totalStakes = totalStakes.add(totalPaid);
