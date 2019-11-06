@@ -40,8 +40,8 @@ contract('StakingPool', async (accounts) => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
     const minerReward = await pool.minerReward();
     assert.equal(minerReward, 0);
-    let stakerNumber = await pool.totalStakerSize();
-    assert.equal(stakerNumber, 1);
+    let poolSize = await pool.poolSize();
+    assert.equal(poolSize, 1);
     const staker = await pool.stakers(0);
     assert.equal(staker, accounts[0]);
     const stakerInfo = await pool.stakerInfo(accounts[0]);
@@ -49,10 +49,15 @@ contract('StakingPool', async (accounts) => {
     assert.equal(stakerInfo[1], 0);
     let totalStakes = await pool.totalStakes();
     assert.equal(totalStakes, toWei(42));
+    let stakesWithDividends = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakesWithDividends, toWei(42));
+    // Random person should have zero stakes.
+    stakesWithDividends = await pool.calculateStakesWithDividend(accounts[5]);
+    assert.equal(stakesWithDividends, 0);
 
     await pool.sendTransaction(txGen(accounts[1], toWei(100)));
-    stakerNumber = await pool.totalStakerSize();
-    assert.equal(stakerNumber, 2);
+    poolSize = await pool.poolSize();
+    assert.equal(poolSize, 2);
     totalStakes = await pool.totalStakes();
     assert.equal(totalStakes, toWei(142));
   });
@@ -65,15 +70,19 @@ contract('StakingPool', async (accounts) => {
     assert.equal(totalStakes, toWei(2));
     let poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, toWei(2));
+    let stakesWithDividends = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakesWithDividends, toWei(2));
     // Failure.
     await pool.withdrawStakes(toWei(3))
       .should.be.rejectedWith(revertError);
     // Withdraw all.
     await pool.withdrawStakes(toWei(2));
-    const stakerNumber = await pool.totalStakerSize();
-    assert.equal(stakerNumber, 0);
+    const poolSize = await pool.poolSize();
+    assert.equal(poolSize, 0);
     totalStakes = await pool.totalStakes();
     assert.equal(totalStakes, 0);
+    stakesWithDividends = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakesWithDividends, 0);
     poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, 0);
   });
@@ -97,8 +106,8 @@ contract('StakingPool', async (accounts) => {
     assert.equal(stakesWithDividends, toWei(46));
     await pool.withdrawStakes(toWei(46.1)).should.be.rejectedWith(revertError);
     await pool.withdrawStakes(toWei(46));
-    minerReward = await pool.minerReward();
     // 50% of coinbase rewards goes to miner.
+    minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(4));
     // Pool balance should update.
     poolBalance = await web3.eth.getBalance(pool.address);

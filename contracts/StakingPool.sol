@@ -30,7 +30,7 @@ contract StakingPool {
         maxStakers = _maxStakers;
     }
 
-    function totalStakerSize() public view returns (uint256) {
+    function poolSize() public view returns (uint256) {
         return stakers.length;
     }
 
@@ -84,6 +84,9 @@ contract StakingPool {
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
+        if (totalStakes == 0) {
+            return 0;
+        }
         uint256 dividend = getDividend(address(this).balance);
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         StakerInfo storage info = stakerInfo[staker];
