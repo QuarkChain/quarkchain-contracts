@@ -27,9 +27,9 @@ contract GeneralNativeTokenManager {
     // Token ID -> gas reserves.
     mapping (uint128 => GasReserve) public gasReserves;
     // Minimum amount of QKC to maintain the gas utility.
-    uint256 public minGasReserveMaintain;
+    uint128 public minGasReserveMaintain;
     // Minimum amount of QKC to start functioning as gas reserve.
-    uint256 public minGasReserveInit;
+    uint128 public minGasReserveInit;
 
     // Balance accounting: token ID -> token admin -> QKC balance.
     mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
@@ -41,8 +41,8 @@ contract GeneralNativeTokenManager {
     }
 
     function setMinGasReserve(
-        uint256 _minGasReserveMaintain,
-        uint256 _minGasReserveInit
+        uint128 _minGasReserveMaintain,
+        uint128 _minGasReserveInit
     ) public
     {
         require(msg.sender == supervisor, "Only supervisor can set min gas reserve.");
@@ -63,10 +63,10 @@ contract GeneralNativeTokenManager {
     )
         public payable
     {
-        require(0 < rateNumerator && rateNumerator < 1e10, "Value should be reasonable.");
-        require(0 < rateDenominator && rateDenominator < 1e10, "Value should be reasonable.");
+        require(0 < rateNumerator, "Value should be non-zero.");
+        require(0 < rateDenominator, "Value should be non-zero.");
         require(
-            rateNumerator * 21000 < minGasReserveMaintain * rateDenominator,
+            rateNumerator * 21000 < uint256(minGasReserveMaintain) * rateDenominator,
             "Requires exchange rate * 21000 < minGasReserveMaintain."
         );
         Fraction memory exchangeRate;
@@ -132,28 +132,26 @@ contract GeneralNativeTokenManager {
         transferMNT(uint256(msg.sender), uint256(tokenId), amount);
     }
 
-    function calculateGas(uint128 tokenId, uint256 amount) public view returns (uint256) {
+    function calculateGas(uint128 tokenId, uint128 amount) public view returns (uint256) {
         GasReserve memory reserve = gasReserves[tokenId];
         if (reserve.admin == address(0)) {
             // Invalid token.
             return 0;
         }
         Fraction memory ratio = reserve.exchangeRate;
-        uint256 gasAmount = ratio.numerator * amount;
-        require(gasAmount / ratio.numerator == amount, "Multiplication overflow.");
+        uint256 gasAmount = uint256(ratio.numerator) * amount;
         gasAmount /= ratio.denominator;
         return gasAmount;
     }
 
     // Should only be called in consensus as the caller is set to the contract itself.
-    function payAsGas(uint128 tokenId, uint256 amount) public {
+    function payAsGas(uint128 tokenId, uint128 amount) public {
         require(msg.sender == payGasCaller, "Only caller can invoke this function.");
         GasReserve storage reserve = gasReserves[tokenId];
         require(reserve.admin != address(0), "Should have a valie gas reserve record.");
 
         Fraction memory ratio = reserve.exchangeRate;
-        uint256 gasAmount = ratio.numerator * amount;
-        require(gasAmount / ratio.numerator == amount, "Multiplication overflow.");
+        uint256 gasAmount = uint256(ratio.numerator) * amount;
 
         gasAmount /= ratio.denominator;
         require(
@@ -173,15 +171,8 @@ contract GeneralNativeTokenManager {
         uint128 denominator2
     ) private pure returns (bool)
     {
-        // Avoid overflow of uint256.
-        uint128 left = numerator1 * denominator2;
-        uint128 right = numerator2 * denominator1;
-        require(
-            left / numerator1 == denominator2, "Multiplication overflow."
-        );
-        require(
-            right / numerator2 == denominator1, "Multiplication overflow."
-        );
+        uint256 left = uint256(numerator1) * denominator2;
+        uint256 right = uint256(numerator2) * denominator1;
         return left < right;
     }
 

@@ -120,8 +120,7 @@ contract StakingPool {
 
         totalStakes = totalStakes.add(totalPaid);
         minerReward = minerReward.add(dividend - totalPaid);
-
-        require(balance >= totalStakes, "Balance should be more than stakes.");
+        assert(balance >= totalStakes);
     }
 
     function getDividend(uint256 balance) private view returns (uint256) {
