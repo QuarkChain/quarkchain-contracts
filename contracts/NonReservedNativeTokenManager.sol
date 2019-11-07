@@ -36,7 +36,7 @@ contract NonReservedNativeTokenManager {
     // Whether to allow token auction winners to mint. Should only enable in shard 0
     bool public allowMint;
 
-    Auction public auction;
+    Auction auction;
     AuctionParams public auctionParams;
 
     mapping (uint128 => NativeToken) public nativeTokens;
@@ -122,7 +122,7 @@ contract NonReservedNativeTokenManager {
         auction.highestBid = bid;
 
         // Extend the auction if the last bid is too close to end time.
-        if (endTime() - uint64(now) < OVERTIME_PERIOD) {
+        if (endTime() - uint128(now) < OVERTIME_PERIOD) {
             auction.overtime += OVERTIME_PERIOD;
         }
     }

@@ -73,7 +73,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, `0x${'0'.repeat(40)}`);
 
     // ----------------------- ROUND 1 -----------------------
-    // Bidder 2 places a bid, should success.
+    // Bidder 2 places a bid, should succeed.
     await manager.bidNewToken(992, toWei(20), 1, { from: accounts[2], value: toWei(20) });
     // The bid above triggers the end of last round of auction and
     // a new round of auction starts.
@@ -113,9 +113,9 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(round, 1);
     assert(Date.now() < 1000 * endTime.toNumber());
 
-    // Bidder 2 place yet another valid bid with 5 more QKC as deposit, should success.
+    // Bidder 2 place yet another valid bid with 5 more QKC as deposit, should succeed.
     await manager.bidNewToken(992, toWei(25), 1, { from: accounts[2], value: toWei(5) });
-    // Bidder 1 tries to withdraw the deposit, should success.
+    // Bidder 1 tries to withdraw the deposit, should succeed.
     await manager.withdraw({ from: accounts[1] });
     // Try calling endAuction, should fail.
     await manager.endAuction().should.be.rejectedWith(revertError);
