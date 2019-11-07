@@ -58,7 +58,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
   });
 
   it('should handle new token bid successfully', async () => {
-    await manager.setAuctionParams(5, 2, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
 
     // ----------------------- ROUND 0 -----------------------
     // One bidder place a bid.
@@ -73,37 +73,52 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, `0x${'0'.repeat(40)}`);
 
     // ----------------------- ROUND 1 -----------------------
-    // Bidder 2 places a bid, should success.
-    await manager.bidNewToken(992, toWei(5), 1, { from: accounts[2], value: toWei(5) });
+    // Bidder 2 places a bid, should succeed.
+    await manager.bidNewToken(992, toWei(20), 1, { from: accounts[2], value: toWei(20) });
     // The bid above triggers the end of last round of auction and
     // a new round of auction starts.
     nativeToken = await manager.nativeTokens(990);
     assert.equal(nativeToken.owner, accounts[1]);
     // Bidder 1 places a bid for token 990 again, should fail.
-    await manager.bidNewToken(990, toWei(7), 1, { from: accounts[1], value: toWei(7) })
+    await manager.bidNewToken(990, toWei(22), 1, { from: accounts[1], value: toWei(22) })
       .should.be.rejectedWith(revertError);
     // Bidder 1 outbids with different token id.
-    await manager.bidNewToken(991, toWei(7), 1, { from: accounts[1], value: toWei(7) });
+    await manager.bidNewToken(991, toWei(21), 1, { from: accounts[1], value: toWei(21) });
 
     // Bidder 2 places another bid with lower price, should fail.
-    await manager.bidNewToken(992, toWei(6), 1, { from: accounts[2], value: toWei(6) })
+    await manager.bidNewToken(992, toWei(20), 1, { from: accounts[2], value: toWei(20) })
       .should.be.rejectedWith(revertError);
     // Bidder 2 place another bid with not enough increment, should fail.
-    await manager.bidNewToken(992, toWei(8), 1, { from: accounts[2], value: toWei(9) })
+    await manager.bidNewToken(992, toWei(22), 1, { from: accounts[2], value: toWei(22) })
       .should.be.rejectedWith(revertError);
     // Bidder 2 places a bid for round 0, should fail (Round 0 has ended).
-    await manager.bidNewToken(992, toWei(9), 0, { from: accounts[2], value: toWei(9) })
+    await manager.bidNewToken(992, toWei(23), 0, { from: accounts[2], value: toWei(23) })
       .should.be.rejectedWith(revertError);
     // Bidder 2 places a bid for round 2, should fail (Round 2 hasn't started).
-    await manager.bidNewToken(992, toWei(9), 2, { from: accounts[2], value: toWei(9) })
+    await manager.bidNewToken(992, toWei(23), 2, { from: accounts[2], value: toWei(23) })
       .should.be.rejectedWith(revertError);
-
     // Bidder 1 tries to withdraw the deposit, should fail.
     await manager.withdraw({ from: accounts[1] }).should.be.rejectedWith(revertError);
-    // Bidder 2 place yet another valid bid, should success.
-    await manager.bidNewToken(992, toWei(9), 1, { from: accounts[2], value: toWei(4) });
-    // Bidder 1 tries to withdraw the deposit, should success.
+
+    const {
+      0: tokenId,
+      1: highestBid,
+      2: highestBidder,
+      3: round,
+      4: endTime,
+    } = await manager.getAuctionState();
+    assert.equal(tokenId, 991);
+    assert.equal(highestBid, toWei(21));
+    assert.equal(highestBidder, accounts[1]);
+    assert.equal(round, 1);
+    assert(Date.now() < 1000 * endTime.toNumber());
+
+    // Bidder 2 place yet another valid bid with 5 more QKC as deposit, should succeed.
+    await manager.bidNewToken(992, toWei(25), 1, { from: accounts[2], value: toWei(5) });
+    // Bidder 1 tries to withdraw the deposit, should succeed.
     await manager.withdraw({ from: accounts[1] });
+    // Try calling endAuction, should fail.
+    await manager.endAuction().should.be.rejectedWith(revertError);
 
     await addDaysOnEVM(7);
     // The auction ends, Bidder 2 wins.

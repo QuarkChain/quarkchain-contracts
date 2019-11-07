@@ -1,5 +1,4 @@
 pragma solidity >0.4.99 <0.6.0;
-pragma experimental ABIEncoderV2;
 
 
 contract NonReservedNativeTokenManager {
@@ -23,7 +22,7 @@ contract NonReservedNativeTokenManager {
     struct AuctionParams {
         uint128 duration;
         // Following are new token auction specific
-        uint64 minIncrementInQKC;
+        uint64 minIncrementInPercent;
         uint64 minPriceInQKC;
     }
 
@@ -37,7 +36,7 @@ contract NonReservedNativeTokenManager {
     // Whether to allow token auction winners to mint. Should only enable in shard 0
     bool public allowMint;
 
-    Auction public auction;
+    Auction auction;
     AuctionParams public auctionParams;
 
     mapping (uint128 => NativeToken) public nativeTokens;
@@ -55,7 +54,7 @@ contract NonReservedNativeTokenManager {
 
     function setAuctionParams(
         uint64 _minPriceInQKC,
-        uint64 _minIncrementInQKC,
+        uint64 _minIncrementInPercent,
         uint64 _duration
     )
         public
@@ -66,19 +65,30 @@ contract NonReservedNativeTokenManager {
             "Auction setting cannot be modified when it is ongoing."
         );
         auctionParams.minPriceInQKC = _minPriceInQKC;
-        auctionParams.minIncrementInQKC = _minIncrementInQKC;
+        auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
     }
 
+    function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
+        return (
+            auction.highestBid.tokenId,
+            auction.highestBid.newTokenPrice,
+            auction.highestBid.bidder,
+            auction.round,
+            endTime()
+        );
+    }
+
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
-        if (auction.startTime == 0) {
-            // Auction hasn't started. Start now
-            auction.startTime = uint64(now);
-        } else if (uint64(now) > auction.startTime + auctionParams.duration +
-                   auction.overtime) {
-            // End last round of auction, such that stale round will be rejected
+        if (canEnd()) {
+            // Automatically end last round of auction, such that stale round will be rejected
             endAuction();
             // Start a new round of auction
+            assert(auction.startTime == 0);
+        }
+
+        if (auction.startTime == 0) {
+            // Auction hasn't started. Start now
             auction.startTime = uint64(now);
         }
 
@@ -88,16 +98,12 @@ contract NonReservedNativeTokenManager {
             "Target round of auction has ended or not started."
         );
 
-        uint128 endTime = auction.startTime +
-            auctionParams.duration + auction.overtime;
-
         require(
             price >= auctionParams.minPriceInQKC * 1 ether,
             "Bid price should be larger than minimum bid price."
         );
         require(
-            price >= auction.highestBid.newTokenPrice +
-                auctionParams.minIncrementInQKC * 1 ether,
+            price >= auction.highestBid.newTokenPrice + auction.highestBid.newTokenPrice * auctionParams.minIncrementInPercent / 100,
             "Bid price should be larger than current highest bid with increment."
         );
 
@@ -116,16 +122,13 @@ contract NonReservedNativeTokenManager {
         auction.highestBid = bid;
 
         // Extend the auction if the last bid is too close to end time.
-        if (endTime - now < OVERTIME_PERIOD) {
+        if (endTime() - uint128(now) < OVERTIME_PERIOD) {
             auction.overtime += OVERTIME_PERIOD;
         }
     }
 
     function endAuction() public {
-        uint128 endTime = auction.startTime +
-            auctionParams.duration + auction.overtime;
-        require(now >= endTime, "Auction has not ended.");
-
+        require(canEnd(), "Auction has not ended.");
         require(
             balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice,
             "Should have enough balance."
@@ -169,5 +172,13 @@ contract NonReservedNativeTokenManager {
         require(amount > 0, "No balance available to withdraw.");
         balance[msg.sender] = 0;
         msg.sender.transfer(amount);
+    }
+
+    function canEnd() private view returns (bool) {
+        return uint128(now) >= endTime() && auction.startTime != 0;
+    }
+
+    function endTime() private view returns (uint128) {
+        return auction.startTime + auctionParams.duration + auction.overtime;
     }
 }
