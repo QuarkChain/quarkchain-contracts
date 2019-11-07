@@ -97,13 +97,28 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     // Bidder 2 places a bid for round 2, should fail (Round 2 hasn't started).
     await manager.bidNewToken(992, toWei(23), 2, { from: accounts[2], value: toWei(23) })
       .should.be.rejectedWith(revertError);
-
     // Bidder 1 tries to withdraw the deposit, should fail.
     await manager.withdraw({ from: accounts[1] }).should.be.rejectedWith(revertError);
+
+    const {
+      0: tokenId,
+      1: highestBid,
+      2: highestBidder,
+      3: round,
+      4: endTime,
+    } = await manager.getAuctionState();
+    assert.equal(tokenId, 991);
+    assert.equal(highestBid, toWei(21));
+    assert.equal(highestBidder, accounts[1]);
+    assert.equal(round, 1);
+    assert(Date.now() < 1000 * endTime.toNumber());
+
     // Bidder 2 place yet another valid bid with 5 more QKC as deposit, should success.
     await manager.bidNewToken(992, toWei(25), 1, { from: accounts[2], value: toWei(5) });
     // Bidder 1 tries to withdraw the deposit, should success.
     await manager.withdraw({ from: accounts[1] });
+    // Try calling endAuction, should fail.
+    await manager.endAuction().should.be.rejectedWith(revertError);
 
     await addDaysOnEVM(7);
     // The auction ends, Bidder 2 wins.

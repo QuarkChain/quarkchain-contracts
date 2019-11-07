@@ -1,5 +1,4 @@
 pragma solidity >0.4.99 <0.6.0;
-pragma experimental ABIEncoderV2;
 
 
 contract NonReservedNativeTokenManager {
@@ -68,6 +67,16 @@ contract NonReservedNativeTokenManager {
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
+    }
+
+    function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
+        return (
+            auction.highestBid.tokenId,
+            auction.highestBid.newTokenPrice,
+            auction.highestBid.bidder,
+            auction.round,
+            endTime()
+        );
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
