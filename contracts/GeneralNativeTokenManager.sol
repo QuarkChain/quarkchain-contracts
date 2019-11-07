@@ -132,7 +132,7 @@ contract GeneralNativeTokenManager {
         transferMNT(uint256(msg.sender), uint256(tokenId), amount);
     }
 
-    function calculateGas(uint128 tokenId, uint256 amount) public view returns (uint256) {
+    function calculateGas(uint128 tokenId, uint128 amount) public view returns (uint256) {
         GasReserve memory reserve = gasReserves[tokenId];
         if (reserve.admin == address(0)) {
             // Invalid token.
