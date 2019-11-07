@@ -129,10 +129,8 @@ contract NonReservedNativeTokenManager {
 
     function endAuction() public {
         require(canEnd(), "Auction has not ended.");
-        require(
-            balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice,
-            "Should have enough balance."
-        );
+        assert (balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
+
         balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
         nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
