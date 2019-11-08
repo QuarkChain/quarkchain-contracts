@@ -24,12 +24,13 @@ async function forceSend(target, value) {
 contract('StakingPool', async (accounts) => {
   let pool;
   const miner = accounts[9];
+  const admin = accounts[8];
   // 50% fee rate.
   const feeRateBp = 5000;
   const maxStakers = 16;
 
   beforeEach(async () => {
-    pool = await StakingPool.new(miner, feeRateBp, maxStakers);
+    pool = await StakingPool.new(miner, admin, feeRateBp, maxStakers);
   });
 
   it('should deploy correctly', async () => {
@@ -182,5 +183,20 @@ contract('StakingPool', async (accounts) => {
     assert.equal(minerReward, toWei(10 + (4 / 2)));
     const stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, toWei(10 + (4 / 2)));
+  });
+
+  it('should allow admin to update fee rate', async () => {
+    let feeRate = await pool.feeRateBp();
+    assert.equal(feeRate, 5000);
+    // Fail if not admin.
+    await pool.adjustFeeRate(1000)
+      .should.be.rejectedWith(revertError);
+    // Fail if rate out of range.
+    await pool.adjustFeeRate(10001, { from: admin })
+      .should.be.rejectedWith(revertError);
+    // Succeed.
+    await pool.adjustFeeRate(1000, { from: admin });
+    feeRate = await pool.feeRateBp();
+    assert.equal(feeRate, 1000);
   });
 });

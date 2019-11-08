@@ -17,15 +17,17 @@ contract StakingPool {
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     uint256 public totalStakes;
-    address payable public miner;
+    address public miner;
+    address public admin;
     // Miner reward rate in basis point
     uint256 public feeRateBp;
     uint256 public minerReward;
     uint256 public maxStakers;
 
-    constructor(address payable _miner, uint256 _feeRateBp, uint256 _maxStakers) public {
+    constructor(address _miner, address _admin, uint256 _feeRateBp, uint256 _maxStakers) public {
         require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         miner = _miner;
+        admin = _admin;
         feeRateBp = _feeRateBp;
         maxStakers = _maxStakers;
     }
@@ -81,6 +83,12 @@ contract StakingPool {
         require(msg.sender == miner, "Only miner can update the address.");
         calculatePayout();
         miner = _miner;
+    }
+
+    function adjustFeeRate(uint256 _feeRateBp) public {
+        require(msg.sender == admin, "Only admin can adjust fee rate.");
+        require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        feeRateBp = _feeRateBp;
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
