@@ -54,14 +54,18 @@ contract NonReservedNativeTokenManager {
         auction.isPaused = true;
     }
 
+    modifier onlySupervisor {
+        require(msg.sender == supervisor, "Only supervisor is allowed.");
+        _;
+    }
+
     function setAuctionParams(
         uint64 _minPriceInQKC,
         uint64 _minIncrementInPercent,
         uint64 _duration
     )
-        public
+        public onlySupervisor
     {
-        require(msg.sender == supervisor, "Only account in whitelist can set auction details.");
         require(
             auction.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
@@ -72,14 +76,12 @@ contract NonReservedNativeTokenManager {
         auction.isPaused = false;
     }
 
-    function pauseAuction() public {
-        require(msg.sender == supervisor, "Only account in whitelist can pause the auction.");
+    function pauseAuction() public onlySupervisor {
         auction.isPaused = true;
     }
 
-    function resumeAuction() public {
-        require(msg.sender == supervisor, "Only account in whitelist can resume the auction.");
-        if (uint128(now) > endTime() && auction.startTime != 0) {
+    function resumeAuction() public onlySupervisor {
+        if (canEnd()) {
             resetAuction();
         }
         auction.isPaused = false;
@@ -96,7 +98,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
-        require(auction.isPaused == false, "Auction is paused.");
+        require(!auction.isPaused, "Auction is paused.");
         if (canEnd()) {
             // Automatically end last round of auction, such that stale round will be rejected
             endAuction();
@@ -145,7 +147,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function endAuction() public {
-        require(auction.isPaused == false, "Auction is paused.");
+        require(!auction.isPaused, "Auction is paused.");
         require(canEnd(), "Auction has not ended.");
         assert (balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
 
