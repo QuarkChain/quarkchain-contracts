@@ -111,11 +111,11 @@ contract StakingPool {
         miner = _miner;
     }
 
-    function adjustFeeRate(uint256 _feeRateBp) public {
-        require(msg.sender == admin, "Only admin can adjust fee rate.");
-        require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+    function adjustMinerFeeRate(uint256 _minerFeeRateBp) public {
+        require(msg.sender == admin, "Only admin can adjust miner fee rate.");
+        require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         calculatePayout();
-        minerFeeRateBp = _feeRateBp;
+        minerFeeRateBp = _minerFeeRateBp;
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {

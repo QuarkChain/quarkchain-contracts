@@ -200,13 +200,13 @@ contract('StakingPool', async (accounts) => {
     let minerFeeRate = await pool.minerFeeRateBp();
     assert.equal(minerFeeRate, 5000);
     // Fail if not admin.
-    await pool.adjustFeeRate(1000)
+    await pool.adjustMinerFeeRate(1000)
       .should.be.rejectedWith(revertError);
     // Fail if rate out of range.
-    await pool.adjustFeeRate(10001, { from: admin })
+    await pool.adjustMinerFeeRate(10001, { from: admin })
       .should.be.rejectedWith(revertError);
     // Succeed.
-    await pool.adjustFeeRate(1000, { from: admin });
+    await pool.adjustMinerFeeRate(1000, { from: admin });
     minerFeeRate = await pool.minerFeeRateBp();
     assert.equal(minerFeeRate, 1000);
   });
