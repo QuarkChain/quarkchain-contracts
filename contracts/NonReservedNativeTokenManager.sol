@@ -24,6 +24,7 @@ contract NonReservedNativeTokenManager {
         // Following are new token auction specific
         uint64 minIncrementInPercent;
         uint64 minPriceInQKC;
+        bool isPaused;
     }
 
     struct NativeToken {
@@ -50,6 +51,7 @@ contract NonReservedNativeTokenManager {
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
         allowMint = _allowMint;
+        auctionParams.isPaused = true;
     }
 
     function setAuctionParams(
@@ -67,6 +69,20 @@ contract NonReservedNativeTokenManager {
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
+        auctionParams.isPaused = false;
+    }
+
+    function pauseAuction() public {
+        require(msg.sender == supervisor, "Only account in whitelist can pause the auction.");
+        auctionParams.isPaused = true;
+    }
+
+    function resumeAuction() public {
+        require(msg.sender == supervisor, "Only account in whitelist can resume the auction.");
+        if (uint128(now) > endTime() && auction.startTime != 0) {
+            resetAuction();
+        }
+        auctionParams.isPaused = false;
     }
 
     function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
@@ -80,6 +96,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
+        require(auctionParams.isPaused == false, "Auction is paused.");
         if (canEnd()) {
             // Automatically end last round of auction, such that stale round will be rejected
             endAuction();
@@ -89,7 +106,7 @@ contract NonReservedNativeTokenManager {
 
         if (auction.startTime == 0) {
             // Auction hasn't started. Start now
-            auction.startTime = uint64(now);
+            auction.startTime = uint128(now);
         }
 
         require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
@@ -128,6 +145,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function endAuction() public {
+        require(auctionParams.isPaused == false, "Auction is paused.");
         require(canEnd(), "Auction has not ended.");
         assert (balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
 
@@ -136,13 +154,7 @@ contract NonReservedNativeTokenManager {
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
         // Set auction to default values
-        auction.highestBid.newTokenPrice = 0;
-        auction.highestBid.bidder = address(0);
-        auction.startTime = 0;
-        auction.overtime = 0;
-
-        // Auction counter increasement
-        auction.round += 1;
+        resetAuction();
     }
 
     function mintNewToken(uint128 tokenId) public {
@@ -170,6 +182,14 @@ contract NonReservedNativeTokenManager {
         require(amount > 0, "No balance available to withdraw.");
         balance[msg.sender] = 0;
         msg.sender.transfer(amount);
+    }
+
+    function resetAuction() private {
+        auction.highestBid.newTokenPrice = 0;
+        auction.highestBid.bidder = address(0);
+        auction.startTime = 0;
+        auction.overtime = 0;
+        auction.round += 1;
     }
 
     function canEnd() private view returns (bool) {
