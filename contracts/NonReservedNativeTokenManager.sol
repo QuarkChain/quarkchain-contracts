@@ -52,6 +52,8 @@ contract NonReservedNativeTokenManager {
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
         allowMint = _allowMint;
+
+        // The contract will not work at first unless setted up by the supervisor
         auction.isPaused = true;
     }
 
@@ -74,7 +76,8 @@ contract NonReservedNativeTokenManager {
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
-        auction.isPaused = false;
+
+        resumeAuction();
     }
 
     function pauseAuction() public onlySupervisor {
@@ -83,6 +86,7 @@ contract NonReservedNativeTokenManager {
 
     function resumeAuction() public onlySupervisor {
         if (canEnd()) {
+            // The auction result is regarded as an invalid.
             resetAuction();
         }
         auction.isPaused = false;
@@ -96,6 +100,10 @@ contract NonReservedNativeTokenManager {
             auction.round,
             endTime()
         );
+    }
+
+    function getIsPaused() public view returns (bool) {
+        return auction.isPaused;
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
