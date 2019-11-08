@@ -13,7 +13,8 @@ contract NonReservedNativeTokenManager {
     }
 
     struct Auction {
-        uint64 round;
+        bool isPaused;
+        uint32 round;
         uint64 overtime;
         uint128 startTime;
         Bid highestBid;
@@ -24,7 +25,6 @@ contract NonReservedNativeTokenManager {
         // Following are new token auction specific
         uint64 minIncrementInPercent;
         uint64 minPriceInQKC;
-        bool isPaused;
     }
 
     struct NativeToken {
@@ -51,7 +51,7 @@ contract NonReservedNativeTokenManager {
     constructor (address _supervisor, bool _allowMint) public {
         supervisor = _supervisor;
         allowMint = _allowMint;
-        auctionParams.isPaused = true;
+        auction.isPaused = true;
     }
 
     function setAuctionParams(
@@ -69,12 +69,12 @@ contract NonReservedNativeTokenManager {
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
-        auctionParams.isPaused = false;
+        auction.isPaused = false;
     }
 
     function pauseAuction() public {
         require(msg.sender == supervisor, "Only account in whitelist can pause the auction.");
-        auctionParams.isPaused = true;
+        auction.isPaused = true;
     }
 
     function resumeAuction() public {
@@ -82,7 +82,7 @@ contract NonReservedNativeTokenManager {
         if (uint128(now) > endTime() && auction.startTime != 0) {
             resetAuction();
         }
-        auctionParams.isPaused = false;
+        auction.isPaused = false;
     }
 
     function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
@@ -96,7 +96,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
-        require(auctionParams.isPaused == false, "Auction is paused.");
+        require(auction.isPaused == false, "Auction is paused.");
         if (canEnd()) {
             // Automatically end last round of auction, such that stale round will be rejected
             endAuction();
@@ -145,7 +145,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function endAuction() public {
-        require(auctionParams.isPaused == false, "Auction is paused.");
+        require(auction.isPaused == false, "Auction is paused.");
         require(canEnd(), "Auction has not ended.");
         assert (balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
 
