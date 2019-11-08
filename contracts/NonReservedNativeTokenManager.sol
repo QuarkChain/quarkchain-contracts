@@ -76,8 +76,6 @@ contract NonReservedNativeTokenManager {
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;
-
-        resumeAuction();
     }
 
     function pauseAuction() public onlySupervisor {

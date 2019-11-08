@@ -61,6 +61,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[5] })
       .should.be.rejectedWith(revertError);
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
 
     // ----------------------- ROUND 0 -----------------------
     // One bidder place a bid.
@@ -150,6 +151,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.bidNewToken(19005001, toWei(5), 0, { from: accounts[1], value: toWei(5) })
       .should.be.rejectedWith(revertError);
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
 
     // One bidder place a bid.
     await manager.bidNewToken(19005001, toWei(5), 0, { from: accounts[1], value: toWei(5) });
