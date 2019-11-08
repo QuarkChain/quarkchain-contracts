@@ -120,6 +120,11 @@ contract NonReservedNativeTokenManager {
             auction.startTime = uint128(now);
         }
 
+        // The token id of "ZZZZ" is 1727603.
+        require(
+            tokenId > 1727603,
+            "The length of token name MUST be larger than 4."
+        );
         require(!nativeTokens[tokenId].isTaken, "Token Id already exists");
         require(
             round == auction.round,
