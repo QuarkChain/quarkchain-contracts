@@ -3,7 +3,7 @@ pragma solidity >0.4.99 <0.6.0;
 
 contract NonReservedNativeTokenManager {
 
-    // 5 min overtime auction extension to avoid sniping
+    // 5 min overtime auction extension to avoid sniping.
     uint64 constant OVERTIME_PERIOD = 300;
 
     struct Bid {
@@ -22,7 +22,7 @@ contract NonReservedNativeTokenManager {
 
     struct AuctionParams {
         uint128 duration;
-        // Following are new token auction specific
+        // Following are new token auction specific.
         uint64 minIncrementInPercent;
         uint64 minPriceInQKC;
     }
@@ -33,9 +33,9 @@ contract NonReservedNativeTokenManager {
         uint256 totalSupply;
     }
 
-    // Auction superviosor. Could be DAO in the future
+    // Auction superviosor. Could be DAO in the future.
     address public supervisor;
-    // Whether to allow token auction winners to mint. Should only enable in shard 0
+    // Whether to allow token auction winners to mint. Should only enable in shard 0.
     bool public allowMint;
 
     Auction auction;
@@ -53,7 +53,7 @@ contract NonReservedNativeTokenManager {
         supervisor = _supervisor;
         allowMint = _allowMint;
 
-        // The contract will not work at first unless setted up by the supervisor
+        // The contract will not work unless set up by the supervisor.
         auction.isPaused = true;
     }
 
@@ -109,14 +109,14 @@ contract NonReservedNativeTokenManager {
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
         require(!auction.isPaused, "Auction is paused.");
         if (canEnd()) {
-            // Automatically end last round of auction, such that stale round will be rejected
+            // Automatically end last round of auction, such that stale round will be rejected.
             endAuction();
-            // Start a new round of auction
+            // Start a new round of auction.
             assert(auction.startTime == 0);
         }
 
         if (auction.startTime == 0) {
-            // Auction hasn't started. Start now
+            // Auction hasn't started. Start now.
             auction.startTime = uint128(now);
         }
 
@@ -165,7 +165,7 @@ contract NonReservedNativeTokenManager {
         nativeTokens[auction.highestBid.tokenId].isTaken = true;
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
-        // Set auction to default values
+        // Set auction to default values.
         resetAuction();
     }
 
@@ -183,8 +183,8 @@ contract NonReservedNativeTokenManager {
     }
 
     function withdraw() public {
-        // Those doesn't win the bid should be able to get back their funds
-        // Note: losing bidders may withdraw their funds at any time, even before the action is over
+        // Those doesn't win the bid should be able to get back their funds.
+        // Note: losing bidders may withdraw their funds at any time, even before the action is over.
         require(
             msg.sender != auction.highestBid.bidder,
             "Highest bidder cannot withdraw balance till the end of this auction."
