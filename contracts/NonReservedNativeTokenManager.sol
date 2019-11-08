@@ -95,7 +95,7 @@ contract NonReservedNativeTokenManager {
         // The token id of "ZZZZ" is 1727603.
         require(
             tokenId > 1727603,
-            "The length of participated token name MUST be larger than 4."
+            "The length of token name MUST be larger than 4."
         );
         require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
         require(
