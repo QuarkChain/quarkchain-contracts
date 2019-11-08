@@ -88,6 +88,7 @@ contract StakingPool {
     function adjustFeeRate(uint256 _feeRateBp) public {
         require(msg.sender == admin, "Only admin can adjust fee rate.");
         require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        calculatePayout();
         feeRateBp = _feeRateBp;
     }
 
