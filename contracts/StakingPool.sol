@@ -19,16 +19,34 @@ contract StakingPool {
     uint256 public totalStakes;
     address public miner;
     address public admin;
-    // Miner reward rate in basis point
-    uint256 public feeRateBp;
-    uint256 public minerReward;
     uint256 public maxStakers;
+    // Miner reward rate in basis point
+    uint256 public minerFeeRateBp;
+    uint256 public minerReward;
 
-    constructor(address _miner, address _admin, uint256 _feeRateBp, uint256 _maxStakers) public {
+    // Mining pool maintainer and corresponding fee structure.
+    address public poolMaintainer;
+    // Pool fee rate in basis point, note it's part of miner reward.
+    uint256 public poolMaintainerFeeRateBp;
+    uint256 public poolMaintainerFee;
+
+    constructor(
+        address _miner,
+        address _admin,
+        address _poolMaintainer,
+        uint256 _feeRateBp,
+        uint256 _poolMaintainerFeeRateBp,
+        uint256 _maxStakers
+    )
+        public
+    {
         require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        require(_poolMaintainerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         miner = _miner;
         admin = _admin;
-        feeRateBp = _feeRateBp;
+        poolMaintainer = _poolMaintainer;
+        minerFeeRateBp = _feeRateBp;
+        poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
     }
 
@@ -72,11 +90,19 @@ contract StakingPool {
     }
 
     function withdrawMinerReward() public {
-        require(msg.sender == miner, "Only miner can withdraw his/her rewards.");
+        require(msg.sender == miner, "Only miner can withdraw rewards.");
         calculatePayout();
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
+    }
+
+    function transferMaintainerFee() public {
+        require(msg.sender == poolMaintainer, "Only pool maintainer can get the maitainance fee.");
+        calculatePayout();
+        uint256 toTransfer = poolMaintainerFee;
+        poolMaintainerFee = 0;
+        msg.sender.transfer(toTransfer);
     }
 
     function updateMiner(address payable _miner) public {
@@ -89,7 +115,7 @@ contract StakingPool {
         require(msg.sender == admin, "Only admin can adjust fee rate.");
         require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         calculatePayout();
-        feeRateBp = _feeRateBp;
+        minerFeeRateBp = _feeRateBp;
     }
 
     function calculateStakesWithDividend(address staker) public view returns (uint256) {
@@ -97,7 +123,7 @@ contract StakingPool {
             return 0;
         }
         uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        uint256 stakerPayout = dividend.mul(MAX_BP - minerFeeRateBp).div(MAX_BP);
         StakerInfo storage info = stakerInfo[staker];
         uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
         return info.stakes + toPay;
@@ -106,7 +132,7 @@ contract StakingPool {
     function estimateMinerReward() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance);
         if (stakers.length > 0) {
-            dividend = dividend.mul(feeRateBp).div(MAX_BP);
+            dividend = dividend.mul(minerFeeRateBp).div(MAX_BP);
         }
         return minerReward.add(dividend);
     }
@@ -118,7 +144,7 @@ contract StakingPool {
         if (dividend == 0) {
             return;
         }
-        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        uint256 stakerPayout = dividend.mul(MAX_BP - minerFeeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
         for (uint256 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
@@ -128,12 +154,17 @@ contract StakingPool {
         }
 
         totalStakes = totalStakes.add(totalPaid);
-        minerReward = minerReward.add(dividend - totalPaid);
+
+        uint256 fee = dividend.sub(totalPaid);
+        uint256 maintainerFee = fee.mul(poolMaintainerFeeRateBp).div(MAX_BP);
+        poolMaintainerFee = poolMaintainerFee.add(maintainerFee);
+        minerReward = minerReward.add(fee.sub(maintainerFee));
         assert(balance >= totalStakes);
     }
 
     function getDividend(uint256 balance) private view returns (uint256) {
-        require(balance >= totalStakes + minerReward, "Should have enough balance.");
-        return balance - totalStakes - minerReward;
+        uint256 recordedAmount = totalStakes.add(minerReward).add(poolMaintainerFee);
+        require(balance >= recordedAmount, "Should have enough balance.");
+        return balance - recordedAmount;
     }
 }

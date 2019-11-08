@@ -16,8 +16,8 @@ function txGen(from, value) {
   };
 }
 
-async function forceSend(target, value) {
-  const selfDestruct = await SelfDestruct.new({ value });
+async function forceSend(target, value, from) {
+  const selfDestruct = await SelfDestruct.new({ value, from });
   await selfDestruct.forceSend(target);
 }
 
@@ -25,12 +25,23 @@ contract('StakingPool', async (accounts) => {
   let pool;
   const miner = accounts[9];
   const admin = accounts[8];
-  // 50% fee rate.
-  const feeRateBp = 5000;
+  const maintainer = accounts[7];
+  const treasury = accounts[6];
+  // 50% miner fee rate.
+  const minerFeeRateBp = 5000;
+  // None goes to maintainer.
+  const poolMaintainerFeeRateBp = 0;
   const maxStakers = 16;
 
   beforeEach(async () => {
-    pool = await StakingPool.new(miner, admin, feeRateBp, maxStakers);
+    pool = await StakingPool.new(
+      miner,
+      admin,
+      maintainer,
+      minerFeeRateBp,
+      poolMaintainerFeeRateBp,
+      maxStakers,
+    );
   });
 
   it('should deploy correctly', async () => {
@@ -90,7 +101,7 @@ contract('StakingPool', async (accounts) => {
 
   it('should calculate dividends correctly', async () => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
-    await forceSend(pool.address, toWei(8));
+    await forceSend(pool.address, toWei(8), treasury);
     let poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, toWei(50));
     // State has not been updated.
@@ -123,7 +134,7 @@ contract('StakingPool', async (accounts) => {
 
   it('should accept new stakers', async () => {
     await pool.sendTransaction(txGen(accounts[0], toWei(10)));
-    await forceSend(pool.address, toWei(10));
+    await forceSend(pool.address, toWei(10), treasury);
     // Now the staker should have 15 QKC and the miner has 5.
     // A new staker comes in.
     const newStaker = accounts[2];
@@ -154,7 +165,7 @@ contract('StakingPool', async (accounts) => {
     // Prev staker should also be able to withdraw stakes + dividends.
     await pool.withdrawStakes(toWei(15));
     // After a new round of mining rewards, only the miner and the new staker should have dividends.
-    await forceSend(pool.address, toWei(20));
+    await forceSend(pool.address, toWei(20), treasury);
     stakes = await pool.calculateStakesWithDividend(newStaker);
     assert.equal(stakes, toWei(20 + (20 / 2)));
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
@@ -166,7 +177,7 @@ contract('StakingPool', async (accounts) => {
   });
 
   it('should handle no staker case', async () => {
-    await forceSend(pool.address, toWei(10));
+    await forceSend(pool.address, toWei(10), treasury);
     let minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(0));
     minerReward = await pool.estimateMinerReward();
@@ -178,7 +189,7 @@ contract('StakingPool', async (accounts) => {
     minerReward = await pool.estimateMinerReward();
     assert.equal(minerReward, toWei(10));
     // Now, new rewards should be distributed evenly.
-    await forceSend(pool.address, toWei(4));
+    await forceSend(pool.address, toWei(4), treasury);
     minerReward = await pool.estimateMinerReward();
     assert.equal(minerReward, toWei(10 + (4 / 2)));
     const stakes = await pool.calculateStakesWithDividend(accounts[0]);
@@ -186,8 +197,8 @@ contract('StakingPool', async (accounts) => {
   });
 
   it('should allow admin to update fee rate', async () => {
-    let feeRate = await pool.feeRateBp();
-    assert.equal(feeRate, 5000);
+    let minerFeeRate = await pool.minerFeeRateBp();
+    assert.equal(minerFeeRate, 5000);
     // Fail if not admin.
     await pool.adjustFeeRate(1000)
       .should.be.rejectedWith(revertError);
@@ -196,7 +207,28 @@ contract('StakingPool', async (accounts) => {
       .should.be.rejectedWith(revertError);
     // Succeed.
     await pool.adjustFeeRate(1000, { from: admin });
-    feeRate = await pool.feeRateBp();
-    assert.equal(feeRate, 1000);
+    minerFeeRate = await pool.minerFeeRateBp();
+    assert.equal(minerFeeRate, 1000);
+  });
+
+  it('should handle maintainer fee correctly', async () => {
+    // Start a new pool where the pool takes 100% of the miner fee..
+    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 10000, maxStakers);
+    await pool.sendTransaction(txGen(accounts[0], toWei(1)));
+    await forceSend(pool.address, toWei(8), treasury);
+    // State has not been updated.
+    let poolMaintainerFee = await pool.poolMaintainerFee();
+    assert.equal(poolMaintainerFee, 0);
+    // Trigger a state update. Pool should have 4 while miner has 0.
+    await pool.withdrawMinerReward({ from: miner, gasPrice: 0 });
+    poolMaintainerFee = await pool.poolMaintainerFee();
+    assert.equal(poolMaintainerFee, toWei(4));
+    assert.equal((await pool.minerReward()), 0);
+    // Pool withdraws transfers the maintaining fee.
+    await pool.transferMaintainerFee({ from: maintainer, gasPrice: 0 });
+    poolMaintainerFee = await pool.poolMaintainerFee();
+    assert.equal(poolMaintainerFee, 0);
+    const maintainerBalance = await web3.eth.getBalance(maintainer);
+    assert.equal(maintainerBalance, toWei(100 + (8 / 2)));
   });
 });
