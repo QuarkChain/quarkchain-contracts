@@ -183,12 +183,12 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
 
     await manager.pauseAuction({ from: accounts[0] });
     await addDaysOnEVM(7);
-    assert(await manager.getIsPaused());
+    assert(await manager.isPaused());
     await addMinutesOnEVM(10);
 
     // After Round 1 ends, the auction is resumed.
     await manager.resumeAuction({ from: accounts[0] });
-    assert(!(await manager.getIsPaused()));
+    assert(!(await manager.isPaused()));
     const {
       0: tokenId1,
       1: highestBid1,

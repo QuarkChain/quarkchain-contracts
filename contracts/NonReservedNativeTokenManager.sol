@@ -102,7 +102,7 @@ contract NonReservedNativeTokenManager {
         );
     }
 
-    function getIsPaused() public view returns (bool) {
+    function isPaused() public view returns (bool) {
         return auction.isPaused;
     }
 
