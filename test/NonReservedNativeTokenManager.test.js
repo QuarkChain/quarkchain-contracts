@@ -58,7 +58,10 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
   });
 
   it('should handle new token bid successfully', async () => {
+    await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[5] })
+      .should.be.rejectedWith(revertError);
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
 
     // ----------------------- ROUND 0 -----------------------
     // One bidder place a bid.
@@ -158,5 +161,76 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, 0);
     nativeToken = await manager.nativeTokens(19004004);
     assert.equal(nativeToken.owner, accounts[4]);
+  });
+
+  it('should handle pausing auction correctly', async () => {
+    // No bid is allowed unless the supervisor has set it up.
+    await manager.bidNewToken(19005001, toWei(5), 0, { from: accounts[1], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+    await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
+
+    // One bidder place a bid.
+    await manager.bidNewToken(19005001, toWei(5), 0, { from: accounts[1], value: toWei(5) });
+    await addDaysOnEVM(3);
+    // No one except the supervisor has access to pausing the auction.
+    await manager.pauseAuction({ from: accounts[5] }).should.be.rejectedWith(revertError);
+    await manager.pauseAuction({ from: accounts[0] });
+    // Bid cannot be placed when the auction is paused.
+    await manager.bidNewToken(19005002, toWei(6), 0, { from: accounts[2], value: toWei(6) })
+      .should.be.rejectedWith(revertError);
+    // No one except the supervisor has access to resuming the auction.
+    await manager.resumeAuction({ from: accounts[5] }).should.be.rejectedWith(revertError);
+    await manager.resumeAuction({ from: accounts[0] });
+    await manager.bidNewToken(19005002, toWei(6), 0, { from: accounts[2], value: toWei(6) });
+    await addDaysOnEVM(5);
+
+    // Round 0 ends.
+    await manager.bidNewToken(19005003, toWei(10), 1, { from: accounts[3], value: toWei(10) });
+    let nativeToken = await manager.nativeTokens(19005002);
+    assert.equal(nativeToken.owner, accounts[2]);
+
+    const {
+      0: tokenId,
+      1: highestBid,
+      2: highestBidder,
+      3: round,
+      4: endTime,
+    } = await manager.getAuctionState();
+    assert.equal(round, 1);
+    assert.equal(highestBidder, accounts[3]);
+
+    await manager.pauseAuction({ from: accounts[0] });
+    await addDaysOnEVM(7);
+    assert(await manager.isPaused());
+    await addMinutesOnEVM(10);
+
+    // After Round 1 ends, the auction is resumed.
+    await manager.resumeAuction({ from: accounts[0] });
+    assert(!(await manager.isPaused()));
+    const {
+      0: tokenId1,
+      1: highestBid1,
+      2: highestBidder1,
+      3: round1,
+      4: endTime1,
+    } = await manager.getAuctionState();
+    assert.equal(round1, 2);
+    assert.equal(highestBid1, toWei(0));
+    assert.equal(highestBidder1, `0x${'0'.repeat(40)}`);
+
+    // A new bid is placed, round 2 starts.
+    await manager.bidNewToken(19005003, toWei(5), 2, { from: accounts[4], value: toWei(5) });
+    await addDaysOnEVM(8);
+    await manager.endAuction();
+    nativeToken = await manager.nativeTokens(19005003);
+    assert.equal(nativeToken.owner, accounts[4]);
+
+    // Pause at idle time.
+    await manager.pauseAuction({ from: accounts[0] });
+    await manager.bidNewToken(19005004, toWei(5), 3, { from: accounts[5], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+    await manager.resumeAuction({ from: accounts[0] });
+    await manager.bidNewToken(19005004, toWei(5), 3, { from: accounts[5], value: toWei(5) });
   });
 });
