@@ -34,18 +34,18 @@ contract StakingPool {
         address _miner,
         address _admin,
         address _poolMaintainer,
-        uint256 _feeRateBp,
+        uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
         uint256 _maxStakers
     )
         public
     {
-        require(_feeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         require(_poolMaintainerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         miner = _miner;
         admin = _admin;
         poolMaintainer = _poolMaintainer;
-        minerFeeRateBp = _feeRateBp;
+        minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
     }
