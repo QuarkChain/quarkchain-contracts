@@ -27,7 +27,6 @@ contract NonReservedNativeTokenManager {
     }
 
     struct NativeToken {
-        bool isTaken;
         address owner;
         uint256 totalSupply;
     }
@@ -122,7 +121,7 @@ contract NonReservedNativeTokenManager {
             tokenId > 1727603,
             "The length of token name MUST be larger than 4."
         );
-        require(!nativeTokens[tokenId].isTaken, "Token Id already exists");
+        require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
         require(
             round == auction.round,
             "Target round of auction has ended or not started."
@@ -164,7 +163,6 @@ contract NonReservedNativeTokenManager {
 
         balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
         nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
-        nativeTokens[auction.highestBid.tokenId].isTaken = true;
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
         // Set auction to default values.
