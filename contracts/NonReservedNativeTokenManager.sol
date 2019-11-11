@@ -187,7 +187,19 @@ contract NonReservedNativeTokenManager {
         require(msg.sender == token.owner, "Only the owner can mint new token.");
 
         token.totalSupply += amount;
+
         // TODO: precompiled contract to be called for minting
+        uint256[3] memory input;
+        input[0] = uint256(address(token.owner));
+        input[1] = tokenId;
+        input[2] = amount;
+        uint256 ret;
+        /* solium-disable-next-line */
+        assembly {
+            if iszero(call(not(0), 0x514b430004, 0, input, 0x60, ret, 0x20)) {
+                revert(0, 0)
+            }
+        }
     }
 
     function transferOwnership(uint128 tokenId, address newOwner) public payable {
