@@ -22,7 +22,6 @@ contract NonReservedNativeTokenManager {
 
     struct AuctionParams {
         uint128 duration;
-        // Following are new token auction specific.
         uint64 minIncrementInPercent;
         uint64 minPriceInQKC;
     }
@@ -84,7 +83,7 @@ contract NonReservedNativeTokenManager {
 
     function resumeAuction() public onlySupervisor {
         if (canEnd()) {
-            // The auction result is regarded as an invalid.
+            // The auction result is regarded as invalid.
             resetAuction();
         }
         auction.isPaused = false;
