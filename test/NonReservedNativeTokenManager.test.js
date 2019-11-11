@@ -128,6 +128,23 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     // Bidder 2 tries to withdraw the deposit, should fail because the balance is 0.
     await manager.withdraw({ from: accounts[2] }).should.be.rejectedWith(revertError);
 
+    // Anyone can query existed native token info
+    const {
+      0: createdTime,
+      1: owner,
+      2: totalSupply,
+    } = await manager.getNativeTokenInfo(19004002, { from: accounts[8] });
+    assert.notEqual(createdTime.toNumber(), 0);
+    assert.equal(owner, accounts[2]);
+
+    const {
+      0: createdTime1,
+      1: owner1,
+      2: totalSupply1,
+    } = await manager.getNativeTokenInfo(1900000, { from: accounts[8] });
+    assert.equal(createdTime1.toNumber(), 0);
+    assert.equal(owner1, `0x${'0'.repeat(40)}`);
+
     // ----------------------- ROUND 2 -----------------------
     // Test for time extension when last-minute bid happens.
     await manager.bidNewToken(19004003, toWei(5), 2, { from: accounts[3], value: toWei(5) });
