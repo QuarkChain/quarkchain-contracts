@@ -27,7 +27,7 @@ contract NonReservedNativeTokenManager {
     }
 
     struct NativeToken {
-        uint128 createAt;
+        uint64 createAt;
         address owner;
         uint256 totalSupply;
     }
@@ -80,7 +80,7 @@ contract NonReservedNativeTokenManager {
         );
     }
 
-    function getNativeTokenInfo(uint128 tokenId) public view returns (uint128, address, uint256) {
+    function getNativeTokenInfo(uint128 tokenId) public view returns (uint64, address, uint256) {
         NativeToken storage token = nativeTokens[tokenId];
 
         return (
@@ -151,7 +151,7 @@ contract NonReservedNativeTokenManager {
         );
         balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
         nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
-        nativeTokens[auction.highestBid.tokenId].createAt = uint128(now);
+        nativeTokens[auction.highestBid.tokenId].createAt = uint64(now);
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
         // Set auction to default values
