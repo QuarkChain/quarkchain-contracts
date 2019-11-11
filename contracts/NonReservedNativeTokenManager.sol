@@ -181,9 +181,12 @@ contract NonReservedNativeTokenManager {
         resetAuction();
     }
 
-    function mintNewToken(uint128 tokenId) public {
-        require(msg.sender == nativeTokens[tokenId].owner, "Only the owner can mint new token.");
-        // TODO
+    function mintNewToken(uint128 tokenId, uint256 amount) public {
+        NativeToken storage token = nativeTokens[tokenId];
+        require(token.createAt != 0, "Token ID doesn't exist.");
+        require(msg.sender == token.owner, "Only the owner can mint new token.");
+
+        token.totalSupply += amount;
     }
 
     function transferOwnership(uint128 tokenId, address newOwner) public payable {
