@@ -27,6 +27,7 @@ contract NonReservedNativeTokenManager {
     }
 
     struct NativeToken {
+        uint64 createAt;
         address owner;
         uint256 totalSupply;
     }
@@ -102,6 +103,16 @@ contract NonReservedNativeTokenManager {
         return auction.isPaused;
     }
 
+    function getNativeTokenInfo(uint128 tokenId) public view returns (uint64, address, uint256) {
+        NativeToken storage token = nativeTokens[tokenId];
+
+        return (
+            token.createAt,
+            token.owner,
+            token.totalSupply
+        );
+    }
+
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
         require(!auction.isPaused, "Auction is paused.");
         if (canEnd()) {
@@ -121,7 +132,7 @@ contract NonReservedNativeTokenManager {
             tokenId > 1727603,
             "The length of token name MUST be larger than 4."
         );
-        require(nativeTokens[tokenId].owner == address(0), "Token Id already exists");
+        require(nativeTokens[tokenId].createAt == 0, "Token Id already exists");
         require(
             round == auction.round,
             "Target round of auction has ended or not started."
@@ -163,6 +174,7 @@ contract NonReservedNativeTokenManager {
 
         balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
         nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
+        nativeTokens[auction.highestBid.tokenId].createAt = uint64(now);
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
 
         // Set auction to default values.
