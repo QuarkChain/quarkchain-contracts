@@ -187,6 +187,7 @@ contract NonReservedNativeTokenManager {
         require(msg.sender == token.owner, "Only the owner can mint new token.");
 
         token.totalSupply += amount;
+        // TODO: precompiled contract to be called for minting
     }
 
     function transferOwnership(uint128 tokenId, address newOwner) public payable {
