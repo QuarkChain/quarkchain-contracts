@@ -99,10 +99,6 @@ contract NonReservedNativeTokenManager {
         );
     }
 
-    function isPaused() public view returns (bool) {
-        return auction.isPaused;
-    }
-
     function getNativeTokenInfo(uint128 tokenId) public view returns (uint64, address, uint256) {
         NativeToken storage token = nativeTokens[tokenId];
 
@@ -111,6 +107,10 @@ contract NonReservedNativeTokenManager {
             token.owner,
             token.totalSupply
         );
+    }
+
+    function isPaused() public view returns (bool) {
+        return auction.isPaused;
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
