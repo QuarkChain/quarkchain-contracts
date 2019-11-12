@@ -81,7 +81,7 @@ contract('GeneralNativeTokenManager', async (accounts) => {
 
     // Test converting native tokens to QKC as gas.
     await manager.setCaller(accounts[3], { from: accounts[0] });
-    await manager.payAsGas(123, toWei(7), { from: accounts[3] });
+    await manager.payAsGas(123, toWei(7), 1, { from: accounts[3] });
     // Check the total deposit. toWei(22) - toWei(7) * 3 = toWei(1).
     assert.equal(await manager.gasReserveBalance(123, accounts[1]), toWei(1));
     // Check the native token amount.
