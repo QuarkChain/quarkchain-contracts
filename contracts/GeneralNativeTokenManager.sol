@@ -110,7 +110,7 @@ contract GeneralNativeTokenManager {
             msg.sender == gasReserves[tokenId].admin,
             "Only admin can set refund rate."
         );
-        require(0 < refundPercentage && refundPercentage <= 100, "Should be between 0 and 100%.");
+        require(10 <= refundPercentage && refundPercentage <= 100, "Should be between 0 and 100%.");
         gasReserves[tokenId].refundPercentage = refundPercentage;
     }
 
