@@ -132,27 +132,31 @@ contract GeneralNativeTokenManager {
         transferMNT(uint256(msg.sender), uint256(tokenId), amount);
     }
 
-    function calculateGas(uint128 tokenId, uint128 amount) public view returns (uint256) {
+    function calculateGas(uint128 tokenId, uint128 gasPrice) public view returns (uint64, uint256) {
         GasReserve memory reserve = gasReserves[tokenId];
         if (reserve.admin == address(0)) {
             // Invalid token.
-            return 0;
+            return (0, 0);
         }
         Fraction memory ratio = reserve.exchangeRate;
-        uint256 gasAmount = uint256(ratio.numerator) * amount;
-        gasAmount /= ratio.denominator;
-        return gasAmount;
+        uint256 convertedGasPrice = uint256(ratio.numerator) * gasPrice;
+        convertedGasPrice /= ratio.denominator;
+        return (reserve.refundPercentage, convertedGasPrice);
     }
 
     // Should only be called in consensus as the caller is set to the contract itself.
-    function payAsGas(uint128 tokenId, uint128 amount) public {
+    function payAsGas(uint128 tokenId, uint128 gas, uint128 gasPrice) public {
         require(msg.sender == payGasCaller, "Only caller can invoke this function.");
         GasReserve storage reserve = gasReserves[tokenId];
         require(reserve.admin != address(0), "Should have a valie gas reserve record.");
 
         Fraction memory ratio = reserve.exchangeRate;
+        uint256 amount = gas * gasPrice;
         uint256 gasAmount = uint256(ratio.numerator) * amount;
-
+        require(
+            gasAmount / uint256(ratio.numerator) == amount,
+            "Avoid uint256 overflow."
+        );
         gasAmount /= ratio.denominator;
         require(
             gasAmount <= gasReserveBalance[tokenId][reserve.admin],
