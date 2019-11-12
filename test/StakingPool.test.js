@@ -212,23 +212,23 @@ contract('StakingPool', async (accounts) => {
   });
 
   it('should handle maintainer fee correctly', async () => {
-    // Start a new pool where the pool takes 100% of the miner fee..
-    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 10000, maxStakers);
+    // Start a new pool where the pool takes 12.5% while the miner takes 50%.
+    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 1250, maxStakers);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
-    // State has not been updated.
-    let poolMaintainerFee = await pool.poolMaintainerFee();
-    assert.equal(poolMaintainerFee, 0);
+    // State has not been updated. Estimate should work.
+    assert.equal((await pool.poolMaintainerFee()), 0);
+    assert.equal((await pool.estimatePoolMaintainerFee()), toWei(1));
+    assert.equal((await pool.minerReward()), 0);
+    assert.equal((await pool.estimateMinerReward()), toWei(4));
     // Trigger a state update. Pool should have 4 while miner has 0.
     await pool.withdrawMinerReward({ from: miner, gasPrice: 0 });
-    poolMaintainerFee = await pool.poolMaintainerFee();
-    assert.equal(poolMaintainerFee, toWei(4));
+    assert.equal((await pool.poolMaintainerFee()), toWei(1));
     assert.equal((await pool.minerReward()), 0);
     // Pool withdraws transfers the maintaining fee.
     await pool.transferMaintainerFee({ from: maintainer, gasPrice: 0 });
-    poolMaintainerFee = await pool.poolMaintainerFee();
-    assert.equal(poolMaintainerFee, 0);
+    assert.equal((await pool.poolMaintainerFee()), 0);
     const maintainerBalance = await web3.eth.getBalance(maintainer);
-    assert.equal(maintainerBalance, toWei(100 + (8 / 2)));
+    assert.equal(maintainerBalance, toWei(100 + (8 / 8)));
   });
 });

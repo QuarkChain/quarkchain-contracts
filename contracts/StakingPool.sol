@@ -16,17 +16,16 @@ contract StakingPool {
 
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
-    uint256 public totalStakes;
-    address public miner;
     address public admin;
+    uint256 public totalStakes;
     uint256 public maxStakers;
-    // Miner reward rate in basis point
+
+    // Miner fee rate in basis point.
+    address public miner;
     uint256 public minerFeeRateBp;
     uint256 public minerReward;
-
     // Mining pool maintainer and corresponding fee structure.
     address public poolMaintainer;
-    // Pool fee rate in basis point, note it's part of miner reward.
     uint256 public poolMaintainerFeeRateBp;
     uint256 public poolMaintainerFee;
 
@@ -137,6 +136,14 @@ contract StakingPool {
         return minerReward.add(dividend);
     }
 
+    function estimatePoolMaintainerFee() public view returns (uint256) {
+        uint256 dividend = getDividend(address(this).balance);
+        if (stakers.length > 0) {
+            dividend = dividend.mul(poolMaintainerFeeRateBp).div(MAX_BP);
+        }
+        return poolMaintainerFee.add(dividend);
+    }
+
     function calculatePayout() private {
         // When adding stakes, need to exclude the current message
         uint256 balance = address(this).balance - msg.value;
@@ -144,7 +151,8 @@ contract StakingPool {
         if (dividend == 0) {
             return;
         }
-        uint256 stakerPayout = dividend.mul(MAX_BP - minerFeeRateBp).div(MAX_BP);
+        uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
         for (uint256 i = 0; i < stakers.length; i++) {
             StakerInfo storage info = stakerInfo[stakers[i]];
@@ -155,10 +163,11 @@ contract StakingPool {
 
         totalStakes = totalStakes.add(totalPaid);
 
-        uint256 fee = dividend.sub(totalPaid);
-        uint256 maintainerFee = fee.mul(poolMaintainerFeeRateBp).div(MAX_BP);
-        poolMaintainerFee = poolMaintainerFee.add(maintainerFee);
-        minerReward = minerReward.add(fee.sub(maintainerFee));
+        uint256 totalFee = dividend.sub(totalPaid);
+        uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
+        uint256 feeForMaintainer = totalFee.sub(feeForMiner);
+        poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
+        minerReward = minerReward.add(feeForMiner);
         assert(balance >= totalStakes);
     }
 
