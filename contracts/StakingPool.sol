@@ -41,6 +41,10 @@ contract StakingPool {
     {
         require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         require(_poolMaintainerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        require(
+            _minerFeeRateBp + _poolMaintainerFeeRateBp <= MAX_BP,
+            "Fee rate should be in basis point."
+        );
         miner = _miner;
         admin = _admin;
         poolMaintainer = _poolMaintainer;
@@ -113,6 +117,10 @@ contract StakingPool {
     function adjustMinerFeeRate(uint256 _minerFeeRateBp) public {
         require(msg.sender == admin, "Only admin can adjust miner fee rate.");
         require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
+        require(
+            _minerFeeRateBp + poolMaintainerFeeRateBp <= MAX_BP,
+            "Fee rate should be in basis point."
+        );
         calculatePayout();
         minerFeeRateBp = _minerFeeRateBp;
     }
