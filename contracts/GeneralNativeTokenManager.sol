@@ -138,10 +138,7 @@ contract GeneralNativeTokenManager {
     ) public view returns (uint64, uint256)
     {
         GasReserve memory reserve = gasReserves[tokenId];
-        if (reserve.admin == address(0)) {
-            // Invalid token.
-            return (0, 0);
-        }
+        require(reserve.admin != address(0), "Invalid token.");
         Fraction memory ratio = reserve.exchangeRate;
         uint256 convertedGasPrice = uint256(ratio.numerator) * gasPrice;
         convertedGasPrice /= ratio.denominator;
@@ -156,7 +153,7 @@ contract GeneralNativeTokenManager {
         uint256 convertedGasPrice;
         (refundPercentage, convertedGasPrice) = calculateGasPrice(tokenId, gasPrice);
         uint256 amount = uint256(gas) * gasPrice;
-        uint256 gasAmount = uint256(gas) * convertedGasPrice;
+        uint256 gasAmount = gas * convertedGasPrice;
         require(
             gasAmount / uint256(gas) == convertedGasPrice,
             "Avoid uint256 overflow."
