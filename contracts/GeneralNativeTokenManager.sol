@@ -142,6 +142,7 @@ contract GeneralNativeTokenManager {
         Fraction memory ratio = reserve.exchangeRate;
         uint256 convertedGasPrice = uint256(ratio.numerator) * gasPrice;
         convertedGasPrice /= ratio.denominator;
+        require(convertedGasPrice > 0, "Should have non-zero value.");
         return (reserve.refundPercentage, convertedGasPrice);
     }
 
