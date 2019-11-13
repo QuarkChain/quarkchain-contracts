@@ -147,25 +147,40 @@ contract GeneralNativeTokenManager {
     }
 
     // Should only be called in consensus as the caller is set to the contract itself.
-    function payAsGas(uint128 tokenId, uint128 gas, uint128 gasPrice) public {
+    function payAsGas(
+        uint128 tokenId,
+        uint128 gas,
+        uint128 gasPrice
+    ) public returns (uint64, uint256)
+    {
         require(msg.sender == payGasCaller, "Only caller can invoke this function.");
         GasReserve memory reserve = gasReserves[tokenId];
         uint64 refundPercentage;
         uint256 convertedGasPrice;
         (refundPercentage, convertedGasPrice) = calculateGasPrice(tokenId, gasPrice);
-        uint256 amount = uint256(gas) * gasPrice;
-        uint256 gasAmount = gas * convertedGasPrice;
+        uint256 nativeTokenCost = uint256(gas) * gasPrice;
+        uint256 qkcGasAmount = gas * convertedGasPrice;
         require(
-            gasAmount / gas == convertedGasPrice,
+            qkcGasAmount / gas == convertedGasPrice,
             "Avoid uint256 overflow."
         );
         require(
-            gasAmount <= gasReserveBalance[tokenId][reserve.admin],
+            minGasReserveMaintain <= gasReserveBalance[tokenId][reserve.admin],
+            "Should have reserve amount greater than minimum."
+        );
+        require(
+            qkcGasAmount <= gasReserveBalance[tokenId][reserve.admin],
             "Should have enough reserves to pay."
         );
+        uint256 newBalance = nativeTokenBalance[tokenId][reserve.admin] + nativeTokenCost;
+        require(
+            newBalance >= nativeTokenBalance[tokenId][reserve.admin],
+            "Avoid addition overflow."
+        );
 
-        gasReserveBalance[tokenId][reserve.admin] -= gasAmount;
-        nativeTokenBalance[tokenId][reserve.admin] += amount;
+        gasReserveBalance[tokenId][reserve.admin] -= qkcGasAmount;
+        nativeTokenBalance[tokenId][reserve.admin] = newBalance;
+        return (refundPercentage, convertedGasPrice);
     }
 
     // True if fraction 1 < fraction 2.

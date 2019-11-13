@@ -90,9 +90,21 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Anyone can propose success when balance < minimum to reserve.
     await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[4], value: toWei(2) });
 
-    // Converted gas price > 0, ratio is 1 / 2
-    await manager.payAsGas(123, toWei(1), 1, { from: accounts[3] })
+    // Requires converted gas price > 0, ratio is 1 / 2.
+    await manager.calculateGasPrice(123, 1, { from: accounts[3] })
       .should.be.rejectedWith(revertError);
+    const calculateGasPriceReturn = (
+      await manager.calculateGasPrice(123, 2, { from: accounts[3] }));
+    // Defaulted refund percentage is 50.
+    assert.equal(calculateGasPriceReturn[0], 50);
+    assert.equal(calculateGasPriceReturn[1], 1);
+
+    // Success if enough gas reserve.
     await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] });
+    // Check the gas reserve toWei(2) - toWei(1) * 2 * (1 / 2) = toWei(1).
+    assert.equal(await manager.gasReserveBalance(123, accounts[4]), toWei(1));
+    // payAsGas fails if gas reserve not enough.
+    await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] })
+      .should.be.rejectedWith(revertError);
   });
 });
