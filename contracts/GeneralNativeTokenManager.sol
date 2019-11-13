@@ -156,7 +156,7 @@ contract GeneralNativeTokenManager {
         uint256 amount = uint256(gas) * gasPrice;
         uint256 gasAmount = gas * convertedGasPrice;
         require(
-            gasAmount / uint256(gas) == convertedGasPrice,
+            gasAmount / gas == convertedGasPrice,
             "Avoid uint256 overflow."
         );
         require(

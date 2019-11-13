@@ -88,6 +88,11 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     assert.equal(await manager.nativeTokenBalance(123, accounts[1]), toWei(7));
 
     // Anyone can propose success when balance < minimum to reserve.
-    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[4], value: toWei(2) });
+    await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[4], value: toWei(2) });
+
+    // Converted gas price > 0, ratio is 1 / 2
+    await manager.payAsGas(123, toWei(1), 1, { from: accounts[3] })
+      .should.be.rejectedWith(revertError);
+    await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] });
   });
 });
