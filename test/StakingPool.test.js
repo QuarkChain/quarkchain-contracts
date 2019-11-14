@@ -216,6 +216,9 @@ contract('StakingPool', async (accounts) => {
     pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 1250, maxStakers);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
+    // Stakes should be calculated correctly.
+    const stakes = await pool.calculateStakesWithDividend(accounts[0]);
+    assert.equal(stakes, toWei(1 + 3));
     // State has not been updated. Estimate should work.
     assert.equal((await pool.poolMaintainerFee()), 0);
     assert.equal((await pool.estimatePoolMaintainerFee()), toWei(1));

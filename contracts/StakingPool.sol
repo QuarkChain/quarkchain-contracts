@@ -130,7 +130,8 @@ contract StakingPool {
             return 0;
         }
         uint256 dividend = getDividend(address(this).balance);
-        uint256 stakerPayout = dividend.mul(MAX_BP - minerFeeRateBp).div(MAX_BP);
+        uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         StakerInfo storage info = stakerInfo[staker];
         uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
         return info.stakes + toPay;
