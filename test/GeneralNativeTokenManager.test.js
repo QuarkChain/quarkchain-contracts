@@ -81,13 +81,30 @@ contract('GeneralNativeTokenManager', async (accounts) => {
 
     // Test converting native tokens to QKC as gas.
     await manager.setCaller(accounts[3], { from: accounts[0] });
-    await manager.payAsGas(123, toWei(7), { from: accounts[3] });
+    await manager.payAsGas(123, toWei(7), 1, { from: accounts[3] });
     // Check the total deposit. toWei(22) - toWei(7) * 3 = toWei(1).
     assert.equal(await manager.gasReserveBalance(123, accounts[1]), toWei(1));
     // Check the native token amount.
     assert.equal(await manager.nativeTokenBalance(123, accounts[1]), toWei(7));
 
     // Anyone can propose success when balance < minimum to reserve.
-    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[4], value: toWei(2) });
+    await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[4], value: toWei(2) });
+
+    // Requires converted gas price > 0, ratio is 1 / 2.
+    await manager.calculateGasPrice(123, 1, { from: accounts[3] })
+      .should.be.rejectedWith(revertError);
+    const calculateGasPriceReturn = (
+      await manager.calculateGasPrice(123, 2, { from: accounts[3] }));
+    // Defaulted refund percentage is 50.
+    assert.equal(calculateGasPriceReturn[0], 50);
+    assert.equal(calculateGasPriceReturn[1], 1);
+
+    // Success if enough gas reserve.
+    await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] });
+    // Check the gas reserve toWei(2) - toWei(1) * 2 * (1 / 2) = toWei(1).
+    assert.equal(await manager.gasReserveBalance(123, accounts[4]), toWei(1));
+    // payAsGas fails if gas reserve not enough.
+    await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] })
+      .should.be.rejectedWith(revertError);
   });
 });
