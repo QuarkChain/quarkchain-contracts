@@ -153,9 +153,9 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.bidNewToken(19004003, toWei(5), 2, { from: accounts[3], value: toWei(5) });
     await addMinutesOnEVM(10080 - 3); // 60 * 24 * 7 - 3
     await manager.bidNewToken(19004004, toWei(8), 2, { from: accounts[4], value: toWei(8) });
-    await addMinutesOnEVM(5);
+    await addMinutesOnEVM(4);
     await manager.endAuction().should.be.rejectedWith(revertError);
-    await addMinutesOnEVM(3);
+    await addMinutesOnEVM(1);
     await manager.endAuction();
     nativeToken = await manager.nativeTokens(19004003);
     assert.equal(nativeToken.owner, 0);

@@ -162,8 +162,9 @@ contract NonReservedNativeTokenManager {
         auction.highestBid = bid;
 
         // Extend the auction if the last bid is too close to end time.
-        if (endTime() - uint128(now) < OVERTIME_PERIOD) {
-            auction.overtime += OVERTIME_PERIOD;
+        uint128 remainingTime = endTime() - uint128(now);
+        if (remainingTime < OVERTIME_PERIOD) {
+            auction.overtime += (OVERTIME_PERIOD - uint64(remainingTime));
         }
     }
 
