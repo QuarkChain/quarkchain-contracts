@@ -41,7 +41,7 @@ contract NonReservedNativeTokenManager {
     AuctionParams public auctionParams;
 
     mapping (uint128 => NativeToken) public nativeTokens;
-    mapping (address => uint256) public balance;
+    mapping (address => uint256) public balances;
 
     event AuctionEnded(
         address winner,
@@ -153,10 +153,10 @@ contract NonReservedNativeTokenManager {
             newTokenPrice: uint128(price),
             bidder: bidder
         });
-        uint256 newBalance = balance[bidder] + msg.value;
+        uint256 newBalance = balances[bidder] + msg.value;
         require(newBalance >= msg.value, "Addition overflow.");
-        balance[bidder] = newBalance;
-        require(balance[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
+        balances[bidder] = newBalance;
+        require(balances[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
         // Win the bid!
         auction.highestBid = bid;
@@ -171,9 +171,9 @@ contract NonReservedNativeTokenManager {
     function endAuction() public {
         require(!auction.isPaused, "Auction is paused.");
         require(canEnd(), "Auction has not ended.");
-        assert (balance[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
+        assert (balances[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
 
-        balance[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
+        balances[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
         nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
         nativeTokens[auction.highestBid.tokenId].createAt = uint64(now);
         emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
@@ -218,9 +218,9 @@ contract NonReservedNativeTokenManager {
             "Highest bidder cannot withdraw balance till the end of this auction."
         );
 
-        uint256 amount = balance[msg.sender];
+        uint256 amount = balances[msg.sender];
         require(amount > 0, "No balance available to withdraw.");
-        balance[msg.sender] = 0;
+        balances[msg.sender] = 0;
         msg.sender.transfer(amount);
     }
 
