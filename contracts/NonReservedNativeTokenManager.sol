@@ -72,6 +72,8 @@ contract NonReservedNativeTokenManager {
             auction.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
         );
+        require(_duration > OVERTIME_PERIOD, "Duration should be longer than 5 minutes.");
+
         auctionParams.minPriceInQKC = _minPriceInQKC;
         auctionParams.minIncrementInPercent = _minIncrementInPercent;
         auctionParams.duration = _duration;

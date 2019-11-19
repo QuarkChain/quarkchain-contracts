@@ -60,6 +60,8 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
   it('should handle new token bid successfully', async () => {
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[5] })
       .should.be.rejectedWith(revertError);
+    await manager.setAuctionParams(5, 5, 299, { from: accounts[0] })
+      .should.be.rejectedWith(revertError);
     await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
     await manager.resumeAuction({ from: accounts[0] });
 
