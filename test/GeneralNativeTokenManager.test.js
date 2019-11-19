@@ -96,8 +96,8 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     const calculateGasPriceReturn = (
       await manager.calculateGasPrice(123, 2, { from: accounts[3] }));
     // Defaulted refund percentage is 50.
-    assert.equal(calculateGasPriceReturn[1], 50);
-    assert.equal(calculateGasPriceReturn[2], 1);
+    assert.equal(calculateGasPriceReturn[0], 50);
+    assert.equal(calculateGasPriceReturn[1], 1);
 
     // Success if enough gas reserve.
     await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] });

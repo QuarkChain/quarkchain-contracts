@@ -135,7 +135,7 @@ contract GeneralNativeTokenManager {
     function calculateGasPrice(
         uint128 tokenId,
         uint128 gasPrice
-    ) public view returns (address, uint64, uint256)
+    ) public view returns (uint64, uint256, address)
     {
         GasReserve memory reserve = gasReserves[tokenId];
         require(reserve.admin != address(0), "Invalid token.");
@@ -143,7 +143,7 @@ contract GeneralNativeTokenManager {
         uint256 convertedGasPrice = uint256(ratio.numerator) * gasPrice;
         convertedGasPrice /= ratio.denominator;
         require(convertedGasPrice > 0, "Should have non-zero value.");
-        return (reserve.admin, reserve.refundPercentage, convertedGasPrice);
+        return (reserve.refundPercentage, convertedGasPrice, reserve.admin);
     }
 
     // Should only be called in consensus as the caller is set to the contract itself.
@@ -157,7 +157,7 @@ contract GeneralNativeTokenManager {
         uint64 refundPercentage;
         uint256 convertedGasPrice;
         address admin;
-        (admin, refundPercentage, convertedGasPrice) = calculateGasPrice(tokenId, gasPrice);
+        (refundPercentage, convertedGasPrice, admin) = calculateGasPrice(tokenId, gasPrice);
         uint256 nativeTokenCost = uint256(gas) * gasPrice;
         uint256 qkcGasAmount = gas * convertedGasPrice;
         require(
