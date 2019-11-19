@@ -225,6 +225,7 @@ contract NonReservedNativeTokenManager {
     }
 
     function resetAuction() private {
+        auction.highestBid.tokenId = 0;
         auction.highestBid.newTokenPrice = 0;
         auction.highestBid.bidder = address(0);
         auction.startTime = 0;
