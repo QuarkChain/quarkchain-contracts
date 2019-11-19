@@ -61,6 +61,10 @@ contract NonReservedNativeTokenManager {
         _;
     }
 
+    function updateSupervisor(address newSupervisor) public onlySupervisor {
+        supervisor = newSupervisor;
+    }
+
     function setAuctionParams(
         uint64 _minPriceInQKC,
         uint64 _minIncrementInPercent,

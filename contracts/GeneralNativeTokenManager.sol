@@ -56,6 +56,11 @@ contract GeneralNativeTokenManager {
         payGasCaller = _payGasCaller;
     }
 
+    function updateSupervisor(address newSupervisor) public {
+        require(msg.sender == supervisor, "Only supervisor can update supervisor address.");
+        supervisor = newSupervisor;
+    }
+
     function proposeNewExchangeRate(
         uint128 tokenId,
         uint128 rateNumerator,
