@@ -40,20 +40,27 @@ contract GeneralNativeTokenManager {
         supervisor = _supervisor;
     }
 
+    modifier onlySupervisor {
+        require(msg.sender == supervisor, "Only supervisor is allowed.");
+        _;
+    }
+
     function setMinGasReserve(
         uint128 _minGasReserveMaintain,
         uint128 _minGasReserveInit
-    ) public
+    ) public onlySupervisor
     {
-        require(msg.sender == supervisor, "Only supervisor can set min gas reserve.");
         minGasReserveMaintain = _minGasReserveMaintain;
         minGasReserveInit = _minGasReserveInit;
     }
 
     // Should only be for testing, otherwise no incentive to change.
-    function setCaller(address _payGasCaller) public {
-        require(msg.sender == supervisor, "Only supervisor can set caller.");
+    function setCaller(address _payGasCaller) public onlySupervisor {
         payGasCaller = _payGasCaller;
+    }
+
+    function updateSupervisor(address newSupervisor) public onlySupervisor {
+        supervisor = newSupervisor;
     }
 
     function proposeNewExchangeRate(
