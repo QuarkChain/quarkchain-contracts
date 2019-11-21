@@ -235,4 +235,22 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.resumeAuction({ from: accounts[0] });
     await manager.bidNewToken(19005004, toWei(5), 3, { from: accounts[5], value: toWei(5) });
   });
+
+  it('should support whitelisting reserved token IDs', async () => {
+    await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
+
+    const reservedTokenId = 1;
+    // Reject since it's reserved.
+    await manager.bidNewToken(reservedTokenId, toWei(5), 0, { from: accounts[1], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+    // Whitelist.
+    await manager.whitelistTokenId(reservedTokenId, true, { from: accounts[0] });
+    // Now this token should pass the check.
+    await manager.bidNewToken(reservedTokenId, toWei(5), 0, { from: accounts[1], value: toWei(5) });
+    // Un-whitelist.
+    await manager.whitelistTokenId(reservedTokenId, false, { from: accounts[0] });
+    await manager.bidNewToken(reservedTokenId, toWei(6), 0, { from: accounts[1], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+  });
 });
