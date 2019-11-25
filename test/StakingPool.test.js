@@ -234,4 +234,17 @@ contract('StakingPool', async (accounts) => {
     const maintainerBalance = await web3.eth.getBalance(maintainer);
     assert.equal(maintainerBalance, toWei(100 + (8 / 8)));
   });
+
+  it('should handle no staker case with pool maintainer', async () => {
+    // Start a new pool where the pool takes 12.5% while the miner takes 50%.
+    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 1250, maxStakers);
+
+    await forceSend(pool.address, toWei(10), treasury);
+    // Miner should take 50/(50+12.5) * 10 = 8.
+    assert.equal((await pool.minerReward()), toWei(0));
+    assert.equal((await pool.estimateMinerReward()), toWei(8));
+    // While maintainer should take 12.5/(50+12.5) * 10 = 2;
+    assert.equal((await pool.poolMaintainerFee()), 0);
+    assert.equal((await pool.estimatePoolMaintainerFee()), toWei(2));
+  });
 });

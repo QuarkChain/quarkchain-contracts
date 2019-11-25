@@ -138,18 +138,14 @@ contract StakingPool {
     }
 
     function estimateMinerReward() public view returns (uint256) {
-        uint256 dividend = getDividend(address(this).balance);
-        if (stakers.length > 0) {
-            dividend = dividend.mul(minerFeeRateBp).div(MAX_BP);
-        }
+        uint256 dividend = getDividend(address(this).balance).mul(minerFeeRateBp).div(
+            stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return minerReward.add(dividend);
     }
 
     function estimatePoolMaintainerFee() public view returns (uint256) {
-        uint256 dividend = getDividend(address(this).balance);
-        if (stakers.length > 0) {
-            dividend = dividend.mul(poolMaintainerFeeRateBp).div(MAX_BP);
-        }
+        uint256 dividend = getDividend(address(this).balance).mul(poolMaintainerFeeRateBp).div(
+            stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return poolMaintainerFee.add(dividend);
     }
 
