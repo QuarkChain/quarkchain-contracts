@@ -42,6 +42,7 @@ contract NonReservedNativeTokenManager {
 
     mapping (uint128 => NativeToken) public nativeTokens;
     mapping (address => uint256) public balances;
+    mapping (uint128 => bool) public whitelistedTokenId;
 
     event AuctionEnded(
         address winner,
@@ -63,6 +64,10 @@ contract NonReservedNativeTokenManager {
 
     function updateSupervisor(address newSupervisor) public onlySupervisor {
         supervisor = newSupervisor;
+    }
+
+    function whitelistTokenId(uint128 tokenId, bool whitelisted) public onlySupervisor {
+        whitelistedTokenId[tokenId] = whitelisted;
     }
 
     function setAuctionParams(
@@ -133,11 +138,8 @@ contract NonReservedNativeTokenManager {
             auction.startTime = uint128(now);
         }
 
-        // The token id of "ZZZZ" is 1727603.
-        require(
-            tokenId > 1727603,
-            "The length of token name MUST be larger than 4."
-        );
+        validateTokenId(tokenId);
+
         require(nativeTokens[tokenId].createAt == 0, "Token Id already exists");
         require(
             round == auction.round,
@@ -245,5 +247,15 @@ contract NonReservedNativeTokenManager {
 
     function endTime() private view returns (uint128) {
         return auction.startTime + auctionParams.duration + auction.overtime;
+    }
+
+    function validateTokenId(uint128 tokenId) private view {
+        if (!whitelistedTokenId[tokenId]) {
+            // The token id of "ZZZZ" is 1727603.
+            require(
+                tokenId > 1727603,
+                "The length of token name MUST be larger than 4."
+            );
+        }
     }
 }
