@@ -31,14 +31,14 @@ contract GeneralNativeTokenManager {
     // Minimum amount of QKC to start functioning as gas reserve.
     uint128 public minGasReserveInit;
 
-    // Switch for token registration
+    // Switch for token registration.
     bool public registrationRequired;
     // Balance accounting: token ID -> token admin -> QKC balance.
     mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
     // Token ID -> token admin -> native token balance.
     mapping (uint128 => mapping (address => uint256)) public nativeTokenBalance;
     // Token ID -> registeredToken
-    mapping (uint256 => bool) public registeredTokens;
+    mapping (uint128 => bool) public registeredTokens;
 
     constructor (address _supervisor) public {
         supervisor = _supervisor;
@@ -75,13 +75,15 @@ contract GeneralNativeTokenManager {
     function registerToken() public payable {
         uint256 tokenId;
 
+        // Call precompiled contract to query current native token id
+        // as a proof of the existence of this token
         /* solium-disable-next-line */
         assembly {
            if iszero(call(not(0), 0x514b430001, 0, 0, 0, tokenId, 0x20)){
                revert(0, 0)
            }
         }
-        registeredTokens[tokenId] = true;
+        registeredTokens[uint128(tokenId)] = true;
     }
 
     function proposeNewExchangeRate(
