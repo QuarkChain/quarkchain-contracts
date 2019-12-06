@@ -23,6 +23,11 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Add more QKC fail if invalid tokenId.
     await manager.depositGasReserve(123, { from: accounts[0], value: toWei(2) })
       .should.be.rejectedWith(revertError);
+    // Non-existed token can not be proposed exchange rate.
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) })
+      .should.be.rejectedWith(revertError);
+    // The supervisor turn off the token registration switch
+    await manager.requireTokenRegistration(false);
     // First time adding reserve should succeed.
     await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) });
     // Check the ratio is correct.
