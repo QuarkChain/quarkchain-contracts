@@ -37,7 +37,7 @@ contract GeneralNativeTokenManager {
     mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
     // Token ID -> token admin -> native token balance.
     mapping (uint128 => mapping (address => uint256)) public nativeTokenBalance;
-    // Token ID -> registeredToken
+    // Token ID -> token registered or not.
     mapping (uint128 => bool) public registeredTokens;
 
     constructor (address _supervisor) public {
