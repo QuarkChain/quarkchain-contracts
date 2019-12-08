@@ -76,13 +76,14 @@ contract GeneralNativeTokenManager {
         uint256 tokenId;
 
         // Call precompiled contract to query current native token id
-        // as a proof of the existence of this token
+        // as a proof of the existence of this token.
         /* solium-disable-next-line */
         assembly {
            if iszero(call(not(0), 0x514b430001, 0, 0, 0, tokenId, 0x20)){
                revert(0, 0)
            }
         }
+        // Token ID is guaranteed to be less than maximum of uint128.
         registeredTokens[uint128(tokenId)] = true;
     }
 
