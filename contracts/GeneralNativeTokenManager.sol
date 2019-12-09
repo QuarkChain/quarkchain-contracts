@@ -31,13 +31,18 @@ contract GeneralNativeTokenManager {
     // Minimum amount of QKC to start functioning as gas reserve.
     uint128 public minGasReserveInit;
 
+    // Switch for token registration.
+    bool public registrationRequired;
     // Balance accounting: token ID -> token admin -> QKC balance.
     mapping (uint128 => mapping (address => uint256)) public gasReserveBalance;
     // Token ID -> token admin -> native token balance.
     mapping (uint128 => mapping (address => uint256)) public nativeTokenBalance;
+    // Token ID -> token registered or not.
+    mapping (uint128 => bool) public registeredTokens;
 
     constructor (address _supervisor) public {
         supervisor = _supervisor;
+        registrationRequired = true;
     }
 
     modifier onlySupervisor {
@@ -63,6 +68,25 @@ contract GeneralNativeTokenManager {
         supervisor = newSupervisor;
     }
 
+    function requireTokenRegistration(bool req) public onlySupervisor {
+        registrationRequired = req;
+    }
+
+    function registerToken() public payable {
+        uint256 tokenId;
+
+        // Call precompiled contract to query current native token id
+        // as a proof of the existence of this token.
+        /* solium-disable-next-line */
+        assembly {
+           if iszero(call(not(0), 0x514b430001, 0, 0, 0, tokenId, 0x20)){
+               revert(0, 0)
+           }
+        }
+        // Token ID is guaranteed to be less than maximum of uint128.
+        registeredTokens[uint128(tokenId)] = true;
+    }
+
     function proposeNewExchangeRate(
         uint128 tokenId,
         uint128 rateNumerator,
@@ -70,6 +94,9 @@ contract GeneralNativeTokenManager {
     )
         public payable
     {
+        if (registrationRequired) {
+            require(registeredTokens[tokenId], "Token ID does not exist.");
+        }
         require(0 < rateNumerator, "Value should be non-zero.");
         require(0 < rateDenominator, "Value should be non-zero.");
         require(
@@ -102,7 +129,7 @@ contract GeneralNativeTokenManager {
     }
 
     function depositGasReserve(uint128 tokenId) public payable {
-        require(gasReserveBalance[tokenId][msg.sender] > 0, "should be an exited token");
+        require(gasReserveBalance[tokenId][msg.sender] > 0, "should be an existed token");
         uint256 newBalance = gasReserveBalance[tokenId][msg.sender] + msg.value;
         require(newBalance >= msg.value, "should be a valid term");
         gasReserveBalance[tokenId][msg.sender] = newBalance;
@@ -117,7 +144,10 @@ contract GeneralNativeTokenManager {
             msg.sender == gasReserves[tokenId].admin,
             "Only admin can set refund rate."
         );
-        require(10 <= refundPercentage && refundPercentage <= 100, "Should be between 0 and 100%.");
+        require(
+            10 <= refundPercentage && refundPercentage <= 100,
+            "Refund pertentage should be between 10 and 100."
+        );
         gasReserves[tokenId].refundPercentage = refundPercentage;
     }
 

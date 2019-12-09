@@ -23,6 +23,11 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Add more QKC fail if invalid tokenId.
     await manager.depositGasReserve(123, { from: accounts[0], value: toWei(2) })
       .should.be.rejectedWith(revertError);
+    // Non-existed token can not be proposed exchange rate.
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) })
+      .should.be.rejectedWith(revertError);
+    // The supervisor turn off the token registration switch.
+    await manager.requireTokenRegistration(false);
     // First time adding reserve should succeed.
     await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) });
     // Check the ratio is correct.
@@ -64,7 +69,7 @@ contract('GeneralNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
     // Success.
     await manager.setRefundPercentage(123, 66, { from: accounts[1] });
-    // Refund rate should be > 0 && refund rate <= 100
+    // Refund rate should be in the range between 10% and 100%.
     await manager.setRefundPercentage(123, 101, { from: accounts[1] })
       .should.be.rejectedWith(revertError);
     const refundPercentage = (await manager.gasReserves(123))[1];
@@ -75,7 +80,7 @@ contract('GeneralNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
     await manager.proposeNewExchangeRate(123, 1, 0, { from: accounts[0], value: toWei(10) })
       .should.be.rejectedWith(revertError);
-    // Requires ratio * 21000 <= minGasReserve
+    // Requires ratio * 21000 <= minGasReserve.
     await manager.proposeNewExchangeRate(123, toWei(1), 1, { from: accounts[0], value: toWei(10) })
       .should.be.rejectedWith(revertError);
 
