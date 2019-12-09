@@ -34,8 +34,6 @@ contract NonReservedNativeTokenManager {
 
     // Auction superviosor. Could be DAO in the future.
     address public supervisor;
-    // Whether to allow token auction winners to mint. Should only enable in shard 0.
-    bool public allowMint;
 
     Auction auction;
     AuctionParams public auctionParams;
@@ -49,9 +47,8 @@ contract NonReservedNativeTokenManager {
         uint128 newTokenId
     );
 
-    constructor (address _supervisor, bool _allowMint) public {
+    constructor (address _supervisor) public {
         supervisor = _supervisor;
-        allowMint = _allowMint;
 
         // The contract will not work unless set up by the supervisor.
         auction.isPaused = true;

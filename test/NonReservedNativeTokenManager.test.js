@@ -50,7 +50,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
 
   beforeEach(async () => {
     supervisor = accounts[0];
-    manager = await NonReservedNativeTokenManager.new(supervisor, true);
+    manager = await NonReservedNativeTokenManager.new(supervisor);
   });
 
   it('should deploy correctly', async () => {
