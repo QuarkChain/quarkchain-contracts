@@ -86,7 +86,7 @@ contract GeneralNativeTokenManager {
         // Token ID is guaranteed to be less than maximum of uint128.
         registeredTokens[uint128(tokenId)] = true;
         // Update native token balance for future withdrawal.
-        nativeTokenBalance[tokenId][msg.sender] = msg.value;
+        nativeTokenBalance[uin128(tokenId)][msg.sender] = msg.value;
     }
 
     function proposeNewExchangeRate(
