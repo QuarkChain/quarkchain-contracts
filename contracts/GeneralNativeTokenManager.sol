@@ -73,21 +73,22 @@ contract GeneralNativeTokenManager {
     }
 
     function registerToken() public payable {
-        uint256 tokenId;
+        uint256[1] memory output;
 
         // Call precompiled contract to query current native token id
         // as a proof of the existence of this token.
         /* solium-disable-next-line */
         assembly {
-           if iszero(call(not(0), 0x514b430001, 0, 0, 0, tokenId, 0x20)){
+           if iszero(call(not(0), 0x514b430001, 0, 0, 0, output, 0x20)){
                revert(0, 0)
            }
         }
-        require(!registeredTokens[uint128(tokenId)], "Token already registered.");
         // Token ID is guaranteed to be less than maximum of uint128.
-        registeredTokens[uint128(tokenId)] = true;
+        uint128 tokenId = uint128(output[0]);
+        require(!registeredTokens[tokenId], "Token already registered.");
+        registeredTokens[tokenId] = true;
         // Update native token balance for future withdrawal.
-        nativeTokenBalance[uint128(tokenId)][msg.sender] = msg.value;
+        nativeTokenBalance[tokenId][msg.sender] = msg.value;
     }
 
     function proposeNewExchangeRate(
