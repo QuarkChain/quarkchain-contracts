@@ -1,6 +1,8 @@
 # Staking Pool Contract User Guide
 
-> **Note: StakingPool.sol hasn't been audited yet. Please be aware of the risk for using it. Our team does not undertake any responsibility.**
+> **Attention! StakingPool.sol is an open source contract of the QuarkChain team, it hasn't been audited yet. The community can try it free. Please be aware of the risk for deploying and using it. Our team does not undertake any responsibility.**
+
+> **注意：StakingPool.sol为QuarkChain团队开源的合约，未经严格审核，社区可以免费试用，在部署和操作使用中出现的一切问题概不负责，均有用户自己承担。**
 
 ## Deploy Contract
 
@@ -22,7 +24,7 @@
 	let rowByteCode = "byte_code_provided_by_remix";
 	let byteCodeWithParam = rowByteCode + web3.eth.abi.encodeParameters(['address','address','address','uint256','uint256','uint256'], [your_miner_address, your_admin_address, your_poolMaintainer_address, _minerFeeRateBp, poolMaintainerFeeRateBp, _maxStakers]).slice(2);
 	```
-	> Admin should be a staker address.
+	> Admin should be a staker address. It can adjust minerFeerateBp by using method *adjustMinerFeeRate* which could prevent miner doing evil. For example, miner doesn't stop mining when staker want to withdraw their stakes.
     
 	> Max feeRateBp is 10000 which equal to 100%.
 
@@ -54,6 +56,8 @@
 ## Mine QKC
 
 - Paste the contract address to your mining settings instead of the regular wallet address. Start mining. **Miner address should be ETH like, so we need delete last eight digits of the contract address.**
+
+  > You can only mine the the same chain as the contract deployed.
   
   ![miner settings](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/8.jpg)
 
