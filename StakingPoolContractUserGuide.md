@@ -6,7 +6,7 @@
 
 1. Use your favorite Ethereum tooling like _solc_ and _remix_ to compile the StakingPool contract, copy the byteCode and abi.
 
-    - Paste your smart contract code in Remix and compile the smart contract. Click on start to compile to compile your smart contract. **QuarkChain VM hasn't supported Istanbul, complier version should <= 0.5.13**
+    - Paste your smart contract code in Remix and compile the smart contract. Click on start to compile to compile your smart contract. **QuarkChain VM hasn't supported Istanbul, complier version should be <= 0.5.13**
 
     - Choose the contract name that we want to deploy from the left dropdown and click on the details tab. You will see the bytecode and ABI while you scroll down the details.
     - Copy the byteCode and ABI by clicking on the copy to clipboard.
@@ -20,7 +20,7 @@
 	```
     let abi = abi_provided_by_remix;
 	let rowByteCode = "byte_code_provided_by_remix";
-	let byteCodeWithParam = rowByteCode + 	web3.eth.abi.encodeParameters(['address','address','address','uint256','uint256','uint256'], [your_miner_address, your_admin_address, your_poolMaintainer_address, _minerFeeRateBp, poolMaintainerFeeRateBp, _maxStakers]).slice(2);
+	let byteCodeWithParam = rowByteCode + web3.eth.abi.encodeParameters(['address','address','address','uint256','uint256','uint256'], [your_miner_address, your_admin_address, your_poolMaintainer_address, _minerFeeRateBp, poolMaintainerFeeRateBp, _maxStakers]).slice(2);
 	```
 	> Admin should be a staker address.
     
@@ -47,7 +47,7 @@
   
   ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/6.jpg)
 
-- QKC holder can transfer their QKC to the contract address.
+- QKC holder can transfer their QKC to the contract address. **Please try the contract methods before staking for making sure the contract deployed right and working well**
   
   ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/7.jpg)
 
@@ -57,7 +57,7 @@
   
   ![miner settings](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/8.jpg)
 
-- You can check the mining result on [QuarkChain Mainet Explorer]
+- You can check the mining result on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract)
 
   ![PoSW successful](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/9.jpg)
 
