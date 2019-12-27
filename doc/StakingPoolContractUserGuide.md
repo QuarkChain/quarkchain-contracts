@@ -48,20 +48,20 @@
   
   ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/6.jpg)
 
-- QKC holder can transfer their QKC to the contract address. **Please try the contract methods before staking to make sure the contract is working as expected**
+- QKC holder can transfer their QKC to the contract address. **Please try the contract methods before staking to make sure the contract is working as expected.**
   
   ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/7.jpg)
 
 ## Mine QKC
+
+> Here uses hiveos.farm with ethminer as an example. You may use your own tooling with similar procedures.
 
 - Paste the contract address to your mining settings instead of the regular QKC wallet address. Start mining. **Miner address should be ETH like, so we need delete last eight digits of the contract address.**
 
   > You can only mine the the same chain as the contract deployed.
   
   ![miner settings](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/8.jpg)
-  
-  > Above image shows my mining settings on hiveos.farm by using ethminer tool. You can using different tools and websites what you like.
-  
+    
   > - [QKC GPU Miner](https://github.com/QuarkChain/ethminer)
   > - [QKC CPU Miner](https://github.com/QuarkChain/Qkchash_CPU_Miner)
 
