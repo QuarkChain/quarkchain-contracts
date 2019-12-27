@@ -9,7 +9,7 @@ jobs:
           key: dependency-cache-{{ checksum "package.json" }}
       - run:
           name: install-npm
-          command: rm package-lock.json && npm install
+          command: if [ ! -d node_modules ]; then npm ci; fi
       - run:
           name: lint
           command: npm run lint
