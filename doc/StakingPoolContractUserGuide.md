@@ -13,17 +13,8 @@
     - Choose the contract name that we want to deploy from the left dropdown and click on the details tab. You will see the bytecode and ABI while you scroll down the details.
     - Copy the byteCode and ABI by clicking on the copy to clipboard.
 
-    ![compile](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/1.jpg)
+    ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/1.jpg)
 
-2. Passing arguments to the constructor of smart contract.
-	
-    We need geth console(metamask injects web3 so that will also be fine) to get the complete byte code. Just go to your geth console and type following commands:
-
-	```
-    let abi = abi_provided_by_remix;
-	let rowByteCode = "byte_code_provided_by_remix";
-	let byteCodeWithParam = rowByteCode + web3.eth.abi.encodeParameters(['address','address','address','uint256','uint256','uint256'], [your_miner_address, your_admin_address, your_poolMaintainer_address, _minerFeeRateBp, poolMaintainerFeeRateBp, _maxStakers]).slice(2);
-	```
 	> Admin should be a trusted entity (preferrably on the staker side). He/she can adjust minerFeerateBp by using method *adjustMinerFeeRate* which could prevent miner doing evil. For example, miner doesn't stop mining when stakers want to withdraw their stakes.
     
 	> Max feeRateBp is 10000 which equal to 100%.
@@ -33,25 +24,25 @@
     - Choose the right shard which you want to mine on Address area.
     - Paste ```byteCodeWithParam``` to Deploy tab and set gas limit >= 2000000 (make sure you have enough qkc on this shard), then click deploy button.
 
-      ![deploy transaction](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/2.jpg)
+      ![deploy transaction](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/2.jpg)
 
-      ![submit transaction](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/3.jpg) 
+      ![submit transaction](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/3.jpg) 
 
     - On the transaction status page you may find the contract address once the transaction is confirmed.
       
-      ![find the transaction](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/4.jpg)
+      ![find the transaction](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/4.jpg)
       
-      ![copy the address](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/5.jpg)
+      ![copy the address](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/5.jpg)
 
 ## Stake QKC
 
 - You can interact with your contract on our [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract). **Make sure you have enough QKC for paying the gas fee on the right chain.**
   
-  ![interact contract](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/6.jpg)
+  ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/6.jpg)
 
 - QKC holder can transfer their QKC to the contract address. **Please try the contract methods before staking to make sure the contract is working as expected**
   
-  ![interact contract](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/7.jpg)
+  ![interact contract](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/7.jpg)
 
 ## Mine QKC
 
@@ -59,16 +50,16 @@
 
   > You can only mine the the same chain as the contract deployed.
   
-  ![miner settings](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/8.jpg)
+  ![miner settings](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/8.jpg)
   
   > Above image shows my mining settings on hiveos.farm by using ethminer tool. You can using different tools and websites what you like.
 
 - You can check the mining result on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract)
 
-  ![PoSW successful](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/9.jpg)
+  ![PoSW successful](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/9.jpg)
 
 ## Withdraw Profits
 
 Staker, Miner and PoolMaintainer can withdraw their profits by methods *withdrawStakers(amount)*, *withdrawMinerReward* and *transferMaintainerFee*.
 
-![withdraw](https://github.com/QuarkChain/quarkchain-contracts/raw/master/assets/images/10.jpg)
+![withdraw](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/10.jpg)
