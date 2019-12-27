@@ -11,9 +11,17 @@
     - Paste your smart contract code in Remix and compile the smart contract. Click on start to compile to compile your smart contract. **QuarkChain VM hasn't supported Istanbul, complier version should be <= 0.5.13**
 
     - Choose the contract name that we want to deploy from the left dropdown and click on the details tab. You will see the bytecode and ABI while you scroll down the details.
-    - Copy the byteCode and ABI by clicking on the copy to clipboard.
+
+    - Copy ABI by clicking on the *copy to clipboard*.
 
     ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/1.jpg)
+    - Go to *Deploy* tab and deploy the contract on testnet.
+    
+    ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/11.jpg)
+    
+    - Check the transaction on etherscan and copy *Input Data*.
+    
+    ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/12.jpg)
 
 	> Admin should be a trusted entity (preferrably on the staker side). He/she can adjust minerFeerateBp by using method *adjustMinerFeeRate* which could prevent miner doing evil. For example, miner doesn't stop mining when stakers want to withdraw their stakes.
     
@@ -22,7 +30,7 @@
 3. Deploy your contract on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract).
 
     - Choose the right shard which you want to mine on Address area.
-    - Paste ```byteCodeWithParam``` to Deploy tab and set gas limit >= 2000000 (make sure you have enough qkc on this shard), then click deploy button.
+    - Paste copied *Input Data* to Deploy tab and set gas limit >= 2000000 (make sure you have enough qkc on this shard), then click deploy button.
 
       ![deploy transaction](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/2.jpg)
 
@@ -53,6 +61,9 @@
   ![miner settings](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/8.jpg)
   
   > Above image shows my mining settings on hiveos.farm by using ethminer tool. You can using different tools and websites what you like.
+  
+  > [QKC GPU Miner](https://github.com/QuarkChain/ethminer)
+  > [QKC CPU Miner](https://github.com/QuarkChain/Qkchash_CPU_Miner)
 
 - You can check the mining result on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract)
 
