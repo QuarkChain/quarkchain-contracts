@@ -12,20 +12,20 @@
 
     - Choose the contract name that we want to deploy from the left dropdown and click on the details tab. You will see the bytecode and ABI while you scroll down the details.
 
-    - Copy ABI by clicking on the *copy to clipboard*.
+    - Copy ABI by clicking on the *ABI*.
 
     ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/1.jpg)
     - Go to *Deploy* tab and deploy the contract on testnet.
     
     ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/11.jpg)
     
-    - Check the transaction on etherscan and copy *Input Data*.
-    
-    ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/12.jpg)
-
 	> Admin should be a trusted entity (preferrably on the staker side). He/she can adjust minerFeerateBp by using method *adjustMinerFeeRate* which could prevent miner doing evil. For example, miner doesn't stop mining when stakers want to withdraw their stakes.
     
 	> Max feeRateBp is 10000 which equal to 100%.
+
+    - Check the transaction on etherscan and copy *Input Data*.
+    
+    ![compile](https://github.com/skji/quarkchain-contracts/raw/master/assets/images/12.jpg)
 
 3. Deploy your contract on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract).
 
@@ -62,8 +62,8 @@
   
   > Above image shows my mining settings on hiveos.farm by using ethminer tool. You can using different tools and websites what you like.
   
-  > [QKC GPU Miner](https://github.com/QuarkChain/ethminer)
-  > [QKC CPU Miner](https://github.com/QuarkChain/Qkchash_CPU_Miner)
+  > - [QKC GPU Miner](https://github.com/QuarkChain/ethminer)
+  > - [QKC CPU Miner](https://github.com/QuarkChain/Qkchash_CPU_Miner)
 
 - You can check the mining result on [QuarkChain Mainet Explorer](https://mainnet.quarkchain.io/contract)
 
