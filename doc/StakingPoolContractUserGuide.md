@@ -2,7 +2,7 @@
 
 > **DISCLAIMER: THIS IS A REFERENCE IMPLEMENTATION AND NOT AUDITED. USE IT AT YOUR OWN RISK. WE WILL NOT ACCEPT RESPONSIBILITY FOR COSTS YOU MAY INCUR AS A RESULT OF USING THIS CONTRACT.**
 
-> **注意：StakingPool.sol为QuarkChain团队开源的合约，未经严格审核，社区可以免费试用，在部署和操作使用中出现的一切问题概不负责，均有用户自己承担。**
+> **注意：StakingPool.sol为QuarkChain团队开源的合约，未经严格审核，社区可以免费试用，在部署和操作使用中出现的一切问题概不负责，均由用户自己承担。**
 
 ## Deploy Contract
 
