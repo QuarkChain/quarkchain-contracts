@@ -35,8 +35,13 @@ contract NonReservedNativeTokenManager {
     // Auction superviosor. Could be DAO in the future.
     address public supervisor;
 
-    Auction auction;
-    AuctionParams public auctionParams;
+    Auction private _auction;
+
+    AuctionParams public auctionParams = AuctionParams({
+        duration: OVERTIME_PERIOD,
+        minIncrementInPercent: 1,
+        minPriceInQKC: 100
+    });
 
     mapping (uint128 => NativeToken) public nativeTokens;
     mapping (address => uint256) public balances;
@@ -51,7 +56,7 @@ contract NonReservedNativeTokenManager {
         supervisor = _supervisor;
 
         // The contract will not work unless set up by the supervisor.
-        auction.isPaused = true;
+        _auction.isPaused = true;
     }
 
     modifier onlySupervisor {
@@ -68,42 +73,42 @@ contract NonReservedNativeTokenManager {
     }
 
     function setAuctionParams(
-        uint64 _minPriceInQKC,
-        uint64 _minIncrementInPercent,
-        uint64 _duration
+        uint64 minPriceInQKC,
+        uint64 minIncrementInPercent,
+        uint64 duration
     )
         public onlySupervisor
     {
         require(
-            auction.startTime == 0,
+            _auction.startTime == 0,
             "Auction setting cannot be modified when it is ongoing."
         );
-        require(_duration > OVERTIME_PERIOD, "Duration should be longer than 5 minutes.");
+        require(duration > OVERTIME_PERIOD, "Duration should be longer than 5 minutes.");
 
-        auctionParams.minPriceInQKC = _minPriceInQKC;
-        auctionParams.minIncrementInPercent = _minIncrementInPercent;
-        auctionParams.duration = _duration;
+        auctionParams.minPriceInQKC = minPriceInQKC;
+        auctionParams.minIncrementInPercent = minIncrementInPercent;
+        auctionParams.duration = duration;
     }
 
     function pauseAuction() public onlySupervisor {
-        auction.isPaused = true;
+        _auction.isPaused = true;
     }
 
     function resumeAuction() public onlySupervisor {
-        if (canEnd()) {
+        if (_canEnd()) {
             // The auction result is regarded as invalid.
-            resetAuction();
+            _resetAuction();
         }
-        auction.isPaused = false;
+        _auction.isPaused = false;
     }
 
     function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
         return (
-            auction.highestBid.tokenId,
-            auction.highestBid.newTokenPrice,
-            auction.highestBid.bidder,
-            auction.round,
-            endTime()
+            _auction.highestBid.tokenId,
+            _auction.highestBid.newTokenPrice,
+            _auction.highestBid.bidder,
+            _auction.round,
+            _endTime()
         );
     }
 
@@ -118,28 +123,28 @@ contract NonReservedNativeTokenManager {
     }
 
     function isPaused() public view returns (bool) {
-        return auction.isPaused;
+        return _auction.isPaused;
     }
 
     function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
-        require(!auction.isPaused, "Auction is paused.");
-        if (canEnd()) {
+        require(!_auction.isPaused, "Auction is paused.");
+        if (_canEnd()) {
             // Automatically end last round of auction, such that stale round will be rejected.
             endAuction();
             // Start a new round of auction.
-            assert(auction.startTime == 0);
+            assert(_auction.startTime == 0);
         }
 
-        if (auction.startTime == 0) {
+        if (_auction.startTime == 0) {
             // Auction hasn't started. Start now.
-            auction.startTime = uint128(now);
+            _auction.startTime = uint128(now);
         }
 
-        validateTokenId(tokenId);
+        _validateTokenId(tokenId);
 
         require(nativeTokens[tokenId].createAt == 0, "Token Id already exists");
         require(
-            round == auction.round,
+            round == _auction.round,
             "Target round of auction has ended or not started."
         );
 
@@ -148,7 +153,7 @@ contract NonReservedNativeTokenManager {
             "Bid price should be larger than minimum bid price."
         );
         require(
-            price >= auction.highestBid.newTokenPrice + auction.highestBid.newTokenPrice * auctionParams.minIncrementInPercent / 100,
+            price >= _auction.highestBid.newTokenPrice + _auction.highestBid.newTokenPrice * auctionParams.minIncrementInPercent / 100,
             "Bid price should be larger than current highest bid with increment."
         );
 
@@ -164,27 +169,27 @@ contract NonReservedNativeTokenManager {
         require(balances[bidder] >= bid.newTokenPrice, "Not enough balance to bid.");
 
         // Win the bid!
-        auction.highestBid = bid;
+        _auction.highestBid = bid;
 
         // Extend the auction if the last bid is too close to end time.
-        uint128 remainingTime = endTime() - uint128(now);
+        uint128 remainingTime = _endTime() - uint128(now);
         if (remainingTime < OVERTIME_PERIOD) {
-            auction.overtime += (OVERTIME_PERIOD - uint64(remainingTime));
+            _auction.overtime += (OVERTIME_PERIOD - uint64(remainingTime));
         }
     }
 
     function endAuction() public {
-        require(!auction.isPaused, "Auction is paused.");
-        require(canEnd(), "Auction has not ended.");
-        assert (balances[auction.highestBid.bidder] >= auction.highestBid.newTokenPrice);
+        require(!_auction.isPaused, "Auction is paused.");
+        require(_canEnd(), "Auction has not ended.");
+        assert (balances[_auction.highestBid.bidder] >= _auction.highestBid.newTokenPrice);
 
-        balances[auction.highestBid.bidder] -= auction.highestBid.newTokenPrice;
-        nativeTokens[auction.highestBid.tokenId].owner = auction.highestBid.bidder;
-        nativeTokens[auction.highestBid.tokenId].createAt = uint64(now);
-        emit AuctionEnded(auction.highestBid.bidder, auction.highestBid.tokenId);
+        balances[_auction.highestBid.bidder] -= _auction.highestBid.newTokenPrice;
+        nativeTokens[_auction.highestBid.tokenId].owner = _auction.highestBid.bidder;
+        nativeTokens[_auction.highestBid.tokenId].createAt = uint64(now);
+        emit AuctionEnded(_auction.highestBid.bidder, _auction.highestBid.tokenId);
 
         // Set auction to default values.
-        resetAuction();
+        _resetAuction();
     }
 
     function mintNewToken(uint128 tokenId, uint256 amount) public {
@@ -207,7 +212,7 @@ contract NonReservedNativeTokenManager {
         }
     }
 
-    function transferOwnership(uint128 tokenId, address newOwner) public payable {
+    function transferOwnership(uint128 tokenId, address newOwner) public {
         require(
             msg.sender == nativeTokens[tokenId].owner,
             "Only the owner can transfer ownership."
@@ -219,7 +224,7 @@ contract NonReservedNativeTokenManager {
         // Those doesn't win the bid should be able to get back their funds.
         // Note: losing bidders may withdraw their funds at any time, even before the action is over.
         require(
-            msg.sender != auction.highestBid.bidder,
+            msg.sender != _auction.highestBid.bidder,
             "Highest bidder cannot withdraw balance till the end of this auction."
         );
 
@@ -229,24 +234,24 @@ contract NonReservedNativeTokenManager {
         msg.sender.transfer(amount);
     }
 
-    function resetAuction() private {
-        auction.highestBid.tokenId = 0;
-        auction.highestBid.newTokenPrice = 0;
-        auction.highestBid.bidder = address(0);
-        auction.startTime = 0;
-        auction.overtime = 0;
-        auction.round += 1;
+    function _resetAuction() private {
+        _auction.highestBid.tokenId = 0;
+        _auction.highestBid.newTokenPrice = 0;
+        _auction.highestBid.bidder = address(0);
+        _auction.startTime = 0;
+        _auction.overtime = 0;
+        _auction.round += 1;
     }
 
-    function canEnd() private view returns (bool) {
-        return uint128(now) >= endTime() && auction.startTime != 0;
+    function _canEnd() private view returns (bool) {
+        return uint128(now) >= _endTime() && _auction.startTime != 0;
     }
 
-    function endTime() private view returns (uint128) {
-        return auction.startTime + auctionParams.duration + auction.overtime;
+    function _endTime() private view returns (uint128) {
+        return _auction.startTime + auctionParams.duration + _auction.overtime;
     }
 
-    function validateTokenId(uint128 tokenId) private view {
+    function _validateTokenId(uint128 tokenId) private view {
         if (!whitelistedTokenId[tokenId]) {
             // The token id of "ZZZZ" is 1727603.
             require(
