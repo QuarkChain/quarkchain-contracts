@@ -27,8 +27,11 @@ contract GeneralNativeTokenManager {
     // Token ID -> gas reserves.
     mapping (uint128 => GasReserve) public gasReserves;
     // Minimum amount of QKC to maintain the gas utility.
+    // If the current QKC gas reserved is lower than the value, then the gas reserved can be
+    // replaced and potentially decrease the current exchange rate.
     uint128 public minGasReserveMaintain;
-    // Minimum amount of QKC to start functioning as gas reserve.
+    // Minimum amount of QKC to start functioning as gas reserve, i.e.,
+    // the minimum amount of QKC to replace gas reserve and increase the current exchange rate.
     uint128 public minGasReserveInit;
 
     // Switch for token registration.
@@ -119,7 +122,7 @@ contract GeneralNativeTokenManager {
         mapping (address => uint256) storage balance = gasReserveBalance[tokenId];
         require(
             balance[reserve.admin] < minGasReserveMaintain ||
-            compareFraction(reserve.exchangeRate.numerator, reserve.exchangeRate.denominator, rateNumerator, rateDenominator),
+            _compareFraction(reserve.exchangeRate.numerator, reserve.exchangeRate.denominator, rateNumerator, rateDenominator),
             "Invalid new exchange rate proposal."
         );
         uint256 newBalance = balance[msg.sender] + msg.value;
@@ -133,9 +136,9 @@ contract GeneralNativeTokenManager {
     }
 
     function depositGasReserve(uint128 tokenId) public payable {
-        require(gasReserveBalance[tokenId][msg.sender] > 0, "should be an existed token");
+        require(gasReserveBalance[tokenId][msg.sender] > 0, "Should be an existed token");
         uint256 newBalance = gasReserveBalance[tokenId][msg.sender] + msg.value;
-        require(newBalance >= msg.value, "should be a valid term");
+        require(newBalance >= msg.value, "Reserved balance overflow");
         gasReserveBalance[tokenId][msg.sender] = newBalance;
     }
 
@@ -170,7 +173,7 @@ contract GeneralNativeTokenManager {
         uint256 amount = nativeTokenBalance[tokenId][msg.sender];
         require(amount > 0, "Should have non-zero value.");
         nativeTokenBalance[tokenId][msg.sender] = 0;
-        transferMNT(uint256(msg.sender), uint256(tokenId), amount);
+        _transferMNT(uint256(msg.sender), uint256(tokenId), amount);
     }
 
     function calculateGasPrice(
@@ -225,7 +228,7 @@ contract GeneralNativeTokenManager {
     }
 
     // True if fraction 1 < fraction 2.
-    function compareFraction(
+    function _compareFraction(
         uint128 numerator1,
         uint128 denominator1,
         uint128 numerator2,
@@ -237,7 +240,7 @@ contract GeneralNativeTokenManager {
         return left < right;
     }
 
-    function transferMNT(uint256 addr, uint256 tokenId, uint256 value) private returns (uint p) {
+    function _transferMNT(uint256 addr, uint256 tokenId, uint256 value) private returns (uint p) {
         uint256[3] memory input;
         input[0] = addr;
         input[1] = tokenId;
