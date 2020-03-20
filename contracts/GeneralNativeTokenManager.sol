@@ -1,19 +1,14 @@
 pragma solidity >0.4.99 <0.6.0;
-pragma experimental ABIEncoderV2;
 
 
 contract GeneralNativeTokenManager {
-
-    struct Fraction {
-        uint128 numerator;
-        uint128 denominator;
-    }
 
     // Gas reserve record, packed into 2 256-bit words.
     struct GasReserve {
         address admin;
         uint64 refundPercentage;
-        Fraction exchangeRate;
+        uint128 numerator;
+        uint128 denominator;
     }
 
     // Required caller for using native token to pay gas in QKC.
@@ -110,9 +105,6 @@ contract GeneralNativeTokenManager {
             rateNumerator * 21000 < uint256(minGasReserveMaintain) * rateDenominator,
             "Requires exchange rate * 21000 < minGasReserveMaintain."
         );
-        Fraction memory exchangeRate;
-        exchangeRate.numerator = rateNumerator;
-        exchangeRate.denominator = rateDenominator;
 
         require(
             gasReserveBalance[tokenId][msg.sender] +
@@ -122,15 +114,15 @@ contract GeneralNativeTokenManager {
         mapping (address => uint256) storage balance = gasReserveBalance[tokenId];
         require(
             balance[reserve.admin] < minGasReserveMaintain ||
-            _compareFraction(reserve.exchangeRate.numerator, reserve.exchangeRate.denominator, rateNumerator, rateDenominator),
+            _compareFraction(reserve.numerator, reserve.denominator, rateNumerator, rateDenominator),
             "Invalid new exchange rate proposal."
         );
         uint256 newBalance = balance[msg.sender] + msg.value;
         require(newBalance >= msg.value, "Addition overflow.");
         balance[msg.sender] = newBalance;
         reserve.admin = msg.sender;
-        reserve.exchangeRate.numerator = rateNumerator;
-        reserve.exchangeRate.denominator = rateDenominator;
+        reserve.numerator = rateNumerator;
+        reserve.denominator = rateDenominator;
         // Default refund percentage.
         reserve.refundPercentage = 50;
     }
@@ -183,9 +175,8 @@ contract GeneralNativeTokenManager {
     {
         GasReserve memory reserve = gasReserves[tokenId];
         require(reserve.admin != address(0), "Invalid token.");
-        Fraction memory ratio = reserve.exchangeRate;
-        uint256 convertedGasPrice = uint256(ratio.numerator) * gasPrice;
-        convertedGasPrice /= ratio.denominator;
+        uint256 convertedGasPrice = uint256(reserve.numerator) * gasPrice;
+        convertedGasPrice /= reserve.denominator;
         require(convertedGasPrice > 0, "Should have non-zero value.");
         return (reserve.refundPercentage, convertedGasPrice, reserve.admin);
     }

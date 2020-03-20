@@ -31,9 +31,9 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // First time adding reserve should succeed.
     await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(2) });
     // Check the ratio is correct.
-    let gasRatio = (await manager.gasReserves(123))[2];
-    assert.equal(gasRatio[0], 1);
-    assert.equal(gasRatio[1], 1);
+    let gasRatio = (await manager.gasReserves(123));
+    assert.equal(gasRatio[2], 1);
+    assert.equal(gasRatio[3], 1);
     // Add more QKC and check balance.
     await manager.depositGasReserve(123, { from: accounts[0], value: toWei(1) });
     assert.equal(await web3.eth.getBalance(manager.address), toWei(3));
@@ -54,14 +54,14 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Check the total deposit.
     assert.equal(await web3.eth.getBalance(manager.address), toWei(22));
     // Check the new ratio.
-    gasRatio = (await manager.gasReserves(123))[2];
-    assert.equal(gasRatio[0], 2);
-    assert.equal(gasRatio[1], 1);
+    gasRatio = (await manager.gasReserves(123));
+    assert.equal(gasRatio[2], 2);
+    assert.equal(gasRatio[3], 1);
     // Can propose higher rate.
     await manager.proposeNewExchangeRate(123, 3, 1, { from: accounts[1], value: toWei(0) });
-    gasRatio = (await manager.gasReserves(123))[2];
-    assert.equal(gasRatio[0], 3);
-    assert.equal(gasRatio[1], 1);
+    gasRatio = (await manager.gasReserves(123));
+    assert.equal(gasRatio[2], 3);
+    assert.equal(gasRatio[3], 1);
 
     // Test refund percentage.
     // Only admin can set refund percentage.
