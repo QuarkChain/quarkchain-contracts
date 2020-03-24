@@ -109,7 +109,35 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Check the gas reserve toWei(2) - toWei(1) * 2 * (1 / 2) = toWei(1).
     assert.equal(await manager.gasReserveBalance(123, accounts[4]), toWei(1));
     // payAsGas fails if gas reserve not enough.
-    await manager.payAsGas(123, toWei(1), 2, { from: accounts[3] })
+    await manager.payAsGas(123, toWei(2), 2, { from: accounts[3] })
       .should.be.rejectedWith(revertError);
   });
+
+  it('should replace gas reserve that is lower than maintain', async () => {
+    // The supervisor turn off the token registration switch.
+    await manager.requireTokenRegistration(false);
+    // First time adding reserve should succeed.
+    await manager.setMinGasReserve(toWei(5), toWei(10))
+    // Doesn't satisfy init condition
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(15) });
+    // Cannot propose another exchange rate unless the rate is greater or GAS reserved is smaller than maintain
+    await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+
+    await manager.setCaller(accounts[3], { from: accounts[0] });
+    await manager.payAsGas(123, toWei(7), 1, { from: accounts[3] });
+    assert.equal(await manager.gasReserveBalance(123, accounts[0]), toWei(8));
+
+    await manager.payAsGas(123, toWei(4), 1, { from: accounts[3] });
+    assert.equal(await manager.gasReserveBalance(123, accounts[0]), toWei(4));
+
+    await manager.payAsGas(123, toWei(5), 1, { from: accounts[3] })
+      .should.be.rejectedWith(revertError);
+
+    // We could propose another exchange rate
+    await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) });
+  });
 });
+

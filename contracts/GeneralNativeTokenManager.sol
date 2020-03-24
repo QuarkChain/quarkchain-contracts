@@ -200,10 +200,6 @@ contract GeneralNativeTokenManager {
             "Avoid uint256 overflow."
         );
         require(
-            minGasReserveMaintain <= gasReserveBalance[tokenId][admin],
-            "Should have reserve amount greater than minimum."
-        );
-        require(
             qkcGasAmount <= gasReserveBalance[tokenId][admin],
             "Should have enough reserves to pay."
         );
