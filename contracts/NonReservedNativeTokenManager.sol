@@ -260,6 +260,6 @@ contract NonReservedNativeTokenManager {
             );
         }
         // The token id of "ZZZZZZZZZZZZ"
-        require(tokenId <= 4873763662273663091)
+        require(tokenId <= 4873763662273663091);
     }
 }
