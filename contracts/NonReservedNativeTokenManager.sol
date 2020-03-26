@@ -259,5 +259,7 @@ contract NonReservedNativeTokenManager {
                 "The length of token name MUST be larger than 4."
             );
         }
+        // The token id of "ZZZZZZZZZZZZ"
+        require(tokenId <= 4873763662273663091)
     }
 }
