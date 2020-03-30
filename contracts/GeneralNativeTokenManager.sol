@@ -99,12 +99,16 @@ contract GeneralNativeTokenManager {
         if (registrationRequired) {
             require(registeredTokens[tokenId], "Token ID does not exist.");
         }
+        // Token id of "ZZZZZZZZZZZZ"
+        require(tokenId <= 4873763662273663091);
+        // Token id of 'QKC'
+        require(tokenId != 0x8bb0);
         require(0 < rateNumerator, "Value should be non-zero.");
         require(0 < rateDenominator, "Value should be non-zero.");
         // Prevent an attack that the attacker offers an extremely high rate while maintain is too low
         // to pay the fee in QKC.
         // Assuming for a tx, the gas price of a native token = 1, and thus minimum token as fee is 21000
-        // After converted to QKC, the amount of QKC shoulud be smaller than maintain so that
+        // After converted to QKC, the amount of QKC should be smaller than maintain so that
         // the rate can be replaced after reducing the reserved QKC to be lower than maintain by
         // sending tx with gas price = 1.
         require(
