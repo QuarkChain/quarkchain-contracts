@@ -57,6 +57,10 @@ contract NonReservedNativeTokenManager {
 
         // The contract will not work unless set up by the supervisor.
         _auction.isPaused = true;
+
+        // QKC (0x8bb0) is already created.
+        nativeTokens[0x8bb0].createAt = 1;
+        nativeTokens[0x8bb0].owner = address(0x1);
     }
 
     modifier onlySupervisor {
@@ -70,6 +74,14 @@ contract NonReservedNativeTokenManager {
 
     function whitelistTokenId(uint128 tokenId, bool whitelisted) public onlySupervisor {
         whitelistedTokenId[tokenId] = whitelisted;
+    }
+
+    function abandonTokenId(uint128 tokenId) public onlySupervisor {
+        require(nativeTokens[tokenId].createAt == 0);
+        require (_auction.highestBid.tokenId != tokenId);
+
+        nativeTokens[tokenId].createAt = uint64(now);
+        nativeTokens[tokenId].owner = address(0x1);
     }
 
     function setAuctionParams(
