@@ -253,4 +253,14 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.bidNewToken(reservedTokenId, toWei(6), 0, { from: accounts[1], value: toWei(10) })
       .should.be.rejectedWith(revertError);
   });
+
+  it('should reject bid with price less than minimum required', async () => {
+    await manager.setAuctionParams(100, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
+    await web3.eth.sendTransaction({ from: accounts[6], to: accounts[1], value: toWei(99) });
+
+    // Note 99 ether in uint64 would overflow. This test is to guard against that.
+    await manager.bidNewToken(19004089, toWei(99), 0, { from: accounts[1], value: toWei(99) })
+      .should.be.rejectedWith(revertError);
+  });
 });

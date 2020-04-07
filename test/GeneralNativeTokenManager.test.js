@@ -117,12 +117,13 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // The supervisor turn off the token registration switch.
     await manager.requireTokenRegistration(false);
     // First time adding reserve should succeed.
-    await manager.setMinGasReserve(toWei(5), toWei(10))
-    // Doesn't satisfy init condition
+    await manager.setMinGasReserve(toWei(5), toWei(10));
+    // Doesn't satisfy init condition.
     await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(5) })
       .should.be.rejectedWith(revertError);
     await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(15) });
-    // Cannot propose another exchange rate unless the rate is greater or GAS reserved is smaller than maintain
+    // Cannot propose another exchange rate unless the rate is greater
+    // or GAS reserved is smaller than maintain.
     await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) })
       .should.be.rejectedWith(revertError);
 
@@ -136,7 +137,7 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     await manager.payAsGas(123, toWei(5), 1, { from: accounts[3] })
       .should.be.rejectedWith(revertError);
 
-    // We could propose another exchange rate
+    // We could propose another exchange rate.
     await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) });
   });
 });
