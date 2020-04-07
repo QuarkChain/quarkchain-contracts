@@ -259,7 +259,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.resumeAuction({ from: accounts[0] });
     await web3.eth.sendTransaction({ from: accounts[6], to: accounts[1], value: toWei(99) });
 
-    // uint64 * ether would multiply overflow.
+    // Note 99 ether in uint64 would overflow. This test is to guard against that.
     await manager.bidNewToken(19004089, toWei(99), 0, { from: accounts[1], value: toWei(99) })
       .should.be.rejectedWith(revertError);
   });
