@@ -24,10 +24,10 @@ contract GeneralNativeTokenManager {
     // Minimum amount of QKC to maintain the gas utility.
     // If the current QKC gas reserved is lower than the value, then the gas reserved can be
     // replaced and potentially decrease the current exchange rate.
-    uint128 public minGasReserveMaintain;
+    uint128 public minGasReserveMaintain = 10 ether;
     // Minimum amount of QKC to start functioning as gas reserve, i.e.,
     // the minimum amount of QKC to replace gas reserve and increase the current exchange rate.
-    uint128 public minGasReserveInit;
+    uint128 public minGasReserveInit = 100 ether;
 
     // Switch for token registration.
     bool public registrationRequired;
