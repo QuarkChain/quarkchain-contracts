@@ -161,7 +161,7 @@ contract NonReservedNativeTokenManager {
         );
 
         require(
-            price >= auctionParams.minPriceInQKC * 1 ether,
+            price >= uint256(auctionParams.minPriceInQKC) * 1 ether,
             "Bid price should be larger than minimum bid price."
         );
         require(
