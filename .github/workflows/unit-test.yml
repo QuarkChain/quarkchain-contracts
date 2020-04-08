@@ -5,9 +5,11 @@ on: [push]
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: circleci/node:11
     steps:
       - uses: actions/checkout@master
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "11"
       - uses: actions/cache@v1
         with:
           path: ~/.npm
