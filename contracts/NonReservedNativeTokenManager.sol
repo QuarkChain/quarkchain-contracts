@@ -158,6 +158,8 @@ contract NonReservedNativeTokenManager {
             // Auction hasn't started. Start now.
             _auction.startTime = uint128(now);
             _auction.endTime = uint128(now) + auctionParams.duration;
+            // First auction cannot be accelerated.
+            require(!accelerate);
         }
 
         assert(_auction.endTime > uint128(now));
@@ -196,13 +198,12 @@ contract NonReservedNativeTokenManager {
         // Win the bid!
         _auction.highestBid = bid;
 
+        uint128 remainingTime = _auction.endTime - uint128(now);
         if (accelerate) {
-            // Reduce by half for acceleration.
-            uint128 remainingTime = _auction.endTime - uint128(now);
+            // Reduce by half for acceleration, skip possible extension.
             _auction.endTime -= (remainingTime / 2);
         } else {
             // Extend the auction if the last bid is too close to end time.
-            uint128 remainingTime = _auction.endTime - uint128(now);
             if (remainingTime < OVERTIME_PERIOD) {
                 _auction.endTime += (OVERTIME_PERIOD - remainingTime);
             }
