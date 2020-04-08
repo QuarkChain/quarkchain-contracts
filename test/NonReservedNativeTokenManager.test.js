@@ -180,9 +180,9 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
     await manager.accelerate(19004000, toWei(10), 0, { from: accounts[1], value: toWei(10) })
       .should.be.rejectedWith(revertError);
-    await manager.changeAccelerator(accounts[1], { from: accounts[1]})
+    await manager.changeAccelerator(accounts[1], { from: accounts[1] })
       .should.be.rejectedWith(revertError);
-    await manager.changeAccelerator(accounts[1], { from: accounts[0]});
+    await manager.changeAccelerator(accounts[1], { from: accounts[0] });
     await manager.accelerate(19004000, toWei(10), 0, { from: accounts[1], value: toWei(10) });
 
     await addDaysOnEVM(4);
