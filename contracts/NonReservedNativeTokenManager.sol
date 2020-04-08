@@ -159,7 +159,10 @@ contract NonReservedNativeTokenManager {
             _auction.startTime = uint128(now);
             _auction.endTime = uint128(now) + auctionParams.duration;
             // First auction cannot be accelerated.
-            require(!accelerate);
+            require(
+                !accelerate,
+                "First auction of a new round cannot be accelerated"
+            );
         }
 
         assert(_auction.endTime > uint128(now));
@@ -181,7 +184,10 @@ contract NonReservedNativeTokenManager {
             "Bid price should be larger than current highest bid with increment."
         );
         if (accelerate) {
-            require(price >= _auction.highestBid.newTokenPrice * 2);
+            require(
+                price >= _auction.highestBid.newTokenPrice * 2,
+                "Bid price must be greater than 2x of current auction price."
+            );
         }
 
         address bidder = msg.sender;
