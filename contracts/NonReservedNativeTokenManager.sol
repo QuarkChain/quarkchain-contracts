@@ -221,7 +221,9 @@ contract NonReservedNativeTokenManager {
     }
 
     function accelerate(uint128 tokenId, uint128 price, uint64 round) public payable {
-        require (accelerator == msg.sender || accelerator == address(0x0));
+        require(
+            accelerator == msg.sender || accelerator == address(0x0),
+            "Accelerator mismatch");
         _bidNewToken(tokenId, price, round, true);
     }
 
