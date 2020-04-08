@@ -16,8 +16,8 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      - name: NPM install / ci
-        run: if [ ! -d node_modules ]; then npm ci; fi
+      - name: Install
+        run: npm ci
       - name: Lint
         run: npm run lint
       - name: Test
