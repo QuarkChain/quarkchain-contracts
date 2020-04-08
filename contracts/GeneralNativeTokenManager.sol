@@ -100,9 +100,9 @@ contract GeneralNativeTokenManager {
             require(registeredTokens[tokenId], "Token ID does not exist.");
         }
         // Token id of "ZZZZZZZZZZZZ"
-        require(tokenId <= 4873763662273663091);
+        require(tokenId <= 4873763662273663091, "Max token ID reached.");
         // Token id of 'QKC'
-        require(tokenId != 0x8bb0);
+        require(tokenId != 0x8bb0, "Can't be default token");
         require(0 < rateNumerator, "Value should be non-zero.");
         require(0 < rateDenominator, "Value should be non-zero.");
         // Prevent an attack that the attacker offers an extremely high rate while maintain is too low

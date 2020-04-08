@@ -77,8 +77,8 @@ contract NonReservedNativeTokenManager {
     }
 
     function abandonTokenId(uint128 tokenId) public onlySupervisor {
-        require(nativeTokens[tokenId].createAt == 0);
-        require (_auction.highestBid.tokenId != tokenId);
+        require(nativeTokens[tokenId].createAt == 0, "Token should not have been auctioned.");
+        require (_auction.highestBid.tokenId != tokenId, "Token can't be in acution");
 
         nativeTokens[tokenId].createAt = uint64(now);
         nativeTokens[tokenId].owner = address(0x1);
@@ -272,6 +272,6 @@ contract NonReservedNativeTokenManager {
             );
         }
         // The token id of "ZZZZZZZZZZZZ"
-        require(tokenId <= 4873763662273663091);
+        require(tokenId <= 4873763662273663091, "Token ID can't exceed max");
     }
 }
