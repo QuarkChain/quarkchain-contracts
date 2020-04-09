@@ -210,12 +210,16 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.endAuction();
 
     // ----------------------- ROUND 2 -----------------------
-    // Test for no time extension when last-minute bid happens.
+    // Test for time extension when last-minute bid happens.
     await manager.bidNewToken(19004002, toWei(5), 2, { from: accounts[3], value: toWei(5) });
-    await addMinutesOnEVM(10080 - 2); // 60 * 24 * 7 - 2
-    // Remain 3 mins, accelerate will decrease it to 1.5 mins.
+    await addMinutesOnEVM(10080 - 7); // 60 * 24 * 7 - 7
+    // Remain 7 mins, accelerate will decrease it to 5 mins instead of 3.5 mins.
     await manager.accelerate(19004002, toWei(10), 2, { from: accounts[4], value: toWei(10) });
     await addMinutesOnEVM(2);
+    await manager.endAuction().should.be.rejectedWith(revertError);
+    await addMinutesOnEVM(2);
+    await manager.endAuction().should.be.rejectedWith(revertError);
+    await addMinutesOnEVM(1);
     await manager.endAuction();
   });
 
