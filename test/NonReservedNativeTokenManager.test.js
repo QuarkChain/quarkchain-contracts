@@ -165,6 +165,60 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, accounts[4]);
   });
 
+  it('should handle acceleration successfully', async () => {
+    await manager.setAuctionParams(5, 5, 7 * 3600 * 24, { from: accounts[0] });
+    await manager.resumeAuction({ from: accounts[0] });
+
+    // ----------------------- ROUND 0 -----------------------
+    // First time accelerate should fail
+    await manager.accelerate(19004000, toWei(5), 0, { from: accounts[0], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+
+    // One bidder place a bid.
+    await manager.bidNewToken(19004000, toWei(5), 0, { from: accounts[1], value: toWei(5) });
+    await manager.accelerate(19004000, toWei(9), 0, { from: accounts[1], value: toWei(9) })
+      .should.be.rejectedWith(revertError);
+    await manager.accelerate(19004000, toWei(10), 0, { from: accounts[1], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+    await manager.changeAccelerator(accounts[1], { from: accounts[1] })
+      .should.be.rejectedWith(revertError);
+    await manager.changeAccelerator(accounts[1], { from: accounts[0] });
+    await manager.accelerate(19004000, toWei(10), 0, { from: accounts[1], value: toWei(10) });
+
+    await addDaysOnEVM(4);
+    await manager.endAuction();
+
+    // ----------------------- ROUND 1 -----------------------
+    // First time accelerate should fail
+    await manager.accelerate(19004001, toWei(10), 1, { from: accounts[1], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+
+    // Accelerate twice.
+    await manager.bidNewToken(19004001, toWei(5), 1, { from: accounts[0], value: toWei(5) });
+    await manager.accelerate(19004001, toWei(10), 1, { from: accounts[0], value: toWei(10) })
+      .should.be.rejectedWith(revertError);
+    await manager.changeAccelerator(`0x${'0'.repeat(40)}`, { from: accounts[0] });
+    await manager.accelerate(19004001, toWei(10), 1, { from: accounts[0], value: toWei(10) });
+    await manager.accelerate(19004001, toWei(19), 1, { from: accounts[1], value: toWei(19) })
+      .should.be.rejectedWith(revertError);
+    await manager.accelerate(19004001, toWei(20), 1, { from: accounts[1], value: toWei(20) });
+
+    await addDaysOnEVM(1);
+    await manager.endAuction().should.be.rejectedWith(revertError);
+
+    await addDaysOnEVM(1);
+    await manager.endAuction();
+
+    // ----------------------- ROUND 2 -----------------------
+    // Test for no time extension when last-minute bid happens.
+    await manager.bidNewToken(19004002, toWei(5), 2, { from: accounts[3], value: toWei(5) });
+    await addMinutesOnEVM(10080 - 2); // 60 * 24 * 7 - 2
+    // Remain 3 mins, accelerate will decrease it to 1.5 mins.
+    await manager.accelerate(19004002, toWei(10), 2, { from: accounts[4], value: toWei(10) });
+    await addMinutesOnEVM(2);
+    await manager.endAuction();
+  });
+
   it('should handle pausing auction correctly', async () => {
     // No bid is allowed unless the supervisor has set it up.
     await manager.bidNewToken(19005001, toWei(5), 0, { from: accounts[1], value: toWei(5) })

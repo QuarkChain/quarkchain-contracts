@@ -15,8 +15,8 @@ contract NonReservedNativeTokenManager {
     struct Auction {
         bool isPaused;
         uint32 round;
-        uint64 overtime;
         uint128 startTime;
+        uint128 endTime;
         Bid highestBid;
     }
 
@@ -47,6 +47,8 @@ contract NonReservedNativeTokenManager {
     mapping (address => uint256) public balances;
     mapping (uint128 => bool) public whitelistedTokenId;
 
+    address public accelerator;
+
     event AuctionEnded(
         address winner,
         uint128 newTokenId
@@ -54,6 +56,7 @@ contract NonReservedNativeTokenManager {
 
     constructor (address _supervisor) public {
         supervisor = _supervisor;
+        accelerator = _supervisor;
 
         // The contract will not work unless set up by the supervisor.
         _auction.isPaused = true;
@@ -114,13 +117,17 @@ contract NonReservedNativeTokenManager {
         _auction.isPaused = false;
     }
 
+    function changeAccelerator(address newAccelerator) public onlySupervisor {
+        accelerator = newAccelerator;
+    }
+
     function getAuctionState() public view returns (uint128, uint128, address,uint64, uint128) {
         return (
             _auction.highestBid.tokenId,
             _auction.highestBid.newTokenPrice,
             _auction.highestBid.bidder,
             _auction.round,
-            _endTime()
+            _auction.endTime
         );
     }
 
@@ -138,7 +145,7 @@ contract NonReservedNativeTokenManager {
         return _auction.isPaused;
     }
 
-    function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
+    function _bidNewToken(uint128 tokenId, uint128 price, uint64 round, bool accelerate) private {
         require(!_auction.isPaused, "Auction is paused.");
         if (_canEnd()) {
             // Automatically end last round of auction, such that stale round will be rejected.
@@ -150,7 +157,15 @@ contract NonReservedNativeTokenManager {
         if (_auction.startTime == 0) {
             // Auction hasn't started. Start now.
             _auction.startTime = uint128(now);
+            _auction.endTime = uint128(now) + auctionParams.duration;
+            // First auction cannot be accelerated.
+            require(
+                !accelerate,
+                "First auction of a new round cannot be accelerated"
+            );
         }
+
+        assert(_auction.endTime > uint128(now));
 
         _validateTokenId(tokenId);
 
@@ -168,6 +183,12 @@ contract NonReservedNativeTokenManager {
             price >= _auction.highestBid.newTokenPrice + _auction.highestBid.newTokenPrice * auctionParams.minIncrementInPercent / 100,
             "Bid price should be larger than current highest bid with increment."
         );
+        if (accelerate) {
+            require(
+                price >= _auction.highestBid.newTokenPrice * 2,
+                "Bid price must be greater than 2x of current auction price."
+            );
+        }
 
         address bidder = msg.sender;
         Bid memory bid = Bid({
@@ -183,11 +204,27 @@ contract NonReservedNativeTokenManager {
         // Win the bid!
         _auction.highestBid = bid;
 
-        // Extend the auction if the last bid is too close to end time.
-        uint128 remainingTime = _endTime() - uint128(now);
-        if (remainingTime < OVERTIME_PERIOD) {
-            _auction.overtime += (OVERTIME_PERIOD - uint64(remainingTime));
+        uint128 remainingTime = _auction.endTime - uint128(now);
+        if (accelerate) {
+            // Reduce by half for acceleration, skip possible extension.
+            _auction.endTime -= (remainingTime / 2);
+        } else {
+            // Extend the auction if the last bid is too close to end time.
+            if (remainingTime < OVERTIME_PERIOD) {
+                _auction.endTime += (OVERTIME_PERIOD - remainingTime);
+            }
         }
+    }
+
+    function bidNewToken(uint128 tokenId, uint128 price, uint64 round) public payable {
+        _bidNewToken(tokenId, price, round, false);
+    }
+
+    function accelerate(uint128 tokenId, uint128 price, uint64 round) public payable {
+        require(
+            accelerator == msg.sender || accelerator == address(0x0),
+            "Accelerator mismatch");
+        _bidNewToken(tokenId, price, round, true);
     }
 
     function endAuction() public {
@@ -251,16 +288,12 @@ contract NonReservedNativeTokenManager {
         _auction.highestBid.newTokenPrice = 0;
         _auction.highestBid.bidder = address(0);
         _auction.startTime = 0;
-        _auction.overtime = 0;
+        _auction.endTime = 0;
         _auction.round += 1;
     }
 
     function _canEnd() private view returns (bool) {
-        return uint128(now) >= _endTime() && _auction.startTime != 0;
-    }
-
-    function _endTime() private view returns (uint128) {
-        return _auction.startTime + auctionParams.duration + _auction.overtime;
+        return uint128(now) >= _auction.endTime && _auction.startTime != 0;
     }
 
     function _validateTokenId(uint128 tokenId) private view {
