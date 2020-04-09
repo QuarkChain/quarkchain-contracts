@@ -140,5 +140,30 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // We could propose another exchange rate.
     await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) });
   });
+
+  it('should freeze contract correctly', async () => {
+    await manager.requireTokenRegistration(false);
+    // First time adding reserve should succeed.
+    await manager.proposeNewExchangeRate(123, 1, 1, { from: accounts[0], value: toWei(5) });
+    // Withdraw fail if is the liquidity provider.
+    await manager.withdrawGasReserve(123, { from: accounts[0] })
+      .should.be.rejectedWith(revertError);
+    // Paying as gas should succeed.
+    const caller = accounts[3];
+    await manager.setCaller(caller, { from: accounts[0] });
+    await manager.payAsGas(123, toWei(1), 1, { from: caller });
+    assert.equal(await manager.gasReserveBalance(123, accounts[0]), toWei(5 - 1));
+
+    // Now supervisor freezes the contract.
+    await manager.setFrozen(true);
+    // Higher rate proposal should still fail.
+    await manager.proposeNewExchangeRate(123, 2, 1, { from: accounts[0], value: toWei(5) })
+      .should.be.rejectedWith(revertError);
+    // Paying gas also fails.
+    await manager.payAsGas(123, toWei(1), 1, { from: caller })
+      .should.be.rejectedWith(revertError);
+    // Liquidity provider can withdraw.
+    await manager.withdrawGasReserve(123, { from: accounts[0] });
+  });
 });
 

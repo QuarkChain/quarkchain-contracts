@@ -37,6 +37,8 @@ contract GeneralNativeTokenManager {
     mapping (uint128 => mapping (address => uint256)) public nativeTokenBalance;
     // Token ID -> token registered or not.
     mapping (uint128 => bool) public registeredTokens;
+    // A flag to freeze current gas reserve to prepare for migration.
+    bool public frozen = false;
 
     constructor (address _supervisor) public {
         supervisor = _supervisor;
@@ -46,6 +48,10 @@ contract GeneralNativeTokenManager {
     modifier onlySupervisor {
         require(msg.sender == supervisor, "Only supervisor is allowed.");
         _;
+    }
+
+    function setFrozen(bool _frozen) public onlySupervisor {
+        frozen = _frozen;
     }
 
     function setMinGasReserve(
@@ -96,6 +102,7 @@ contract GeneralNativeTokenManager {
     )
         public payable
     {
+        require(!frozen, "Contract frozen.");
         if (registrationRequired) {
             require(registeredTokens[tokenId], "Token ID does not exist.");
         }
@@ -162,7 +169,8 @@ contract GeneralNativeTokenManager {
 
     function withdrawGasReserve(uint128 tokenId) public {
         require(
-            msg.sender != gasReserves[tokenId].admin,
+            // If contract frozen, allow withdraw at any time.
+            frozen || msg.sender != gasReserves[tokenId].admin,
             "Not allowed for native token admin."
         );
         uint256 amount = gasReserveBalance[tokenId][msg.sender];
@@ -198,6 +206,7 @@ contract GeneralNativeTokenManager {
         uint128 gasPrice
     ) public returns (uint64, uint256)
     {
+        require(!frozen, "Contract frozen.");
         require(msg.sender == payGasCaller, "Only caller can invoke this function.");
         uint64 refundPercentage;
         uint256 convertedGasPrice;
