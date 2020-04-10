@@ -165,8 +165,6 @@ contract NonReservedNativeTokenManager {
             );
         }
 
-        assert(_auction.endTime > uint128(now));
-
         _validateTokenId(tokenId);
 
         require(nativeTokens[tokenId].createAt == 0, "Token Id already exists");
@@ -204,15 +202,17 @@ contract NonReservedNativeTokenManager {
         // Win the bid!
         _auction.highestBid = bid;
 
-        uint128 remainingTime = _auction.endTime - uint128(now);
+        assert(_auction.endTime > uint128(now));
         if (accelerate) {
-            // Reduce by half for acceleration, skip possible extension.
+            // Reduce by half for acceleration, extension still applys.
+            uint128 remainingTime = _auction.endTime - uint128(now);
             _auction.endTime -= (remainingTime / 2);
-        } else {
-            // Extend the auction if the last bid is too close to end time.
-            if (remainingTime < OVERTIME_PERIOD) {
-                _auction.endTime += (OVERTIME_PERIOD - remainingTime);
-            }
+        }
+
+        // Extend the auction if the last bid is too close to end time.
+        uint128 remainingTime = _auction.endTime - uint128(now);
+        if (remainingTime < OVERTIME_PERIOD) {
+            _auction.endTime += (OVERTIME_PERIOD - remainingTime);
         }
     }
 
