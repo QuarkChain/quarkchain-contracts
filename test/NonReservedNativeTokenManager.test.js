@@ -8,6 +8,8 @@ require('chai').use(require('chai-as-promised')).should();
 const revertError = 'VM Exception while processing transaction: revert';
 const toWei = i => web3.utils.toWei(String(i));
 const web3SendAsync = promisify(web3.currentProvider.send);
+const zeroAddr = `0x${'0'.repeat(40)}`;
+const burner = `0x${'0'.repeat(39)}2`;
 
 // For EVM snapshot - revert workflow.
 let snapshotId;
@@ -54,7 +56,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
   });
 
   it('should deploy correctly', async () => {
-    assert.notEqual(manager.address, `0x${'0'.repeat(40)}`);
+    assert.notEqual(manager.address, zeroAddr);
   });
 
   it('should handle new token bid successfully', async () => {
@@ -75,7 +77,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     // Though end time comes, endAuction() hasn't been triggered.
     // So winner info of this auction hasn't been updated yet.
     let nativeToken = await manager.nativeTokens(19004000);
-    assert.equal(nativeToken.owner, `0x${'0'.repeat(40)}`);
+    assert.equal(nativeToken.owner, zeroAddr);
 
     // ----------------------- ROUND 1 -----------------------
     // Bidder 2 places a bid, should succeed.
@@ -128,6 +130,8 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await addDaysOnEVM(7);
     // The auction ends, Bidder 2 wins.
     await manager.endAuction();
+    // Check burned QKC for round 0 and round 1.
+    assert.equal(await web3.eth.getBalance(burner), toWei(25 + 5));
     nativeToken = await manager.nativeTokens(19004002);
     assert.equal(nativeToken.owner, accounts[2]);
     // Bidder 2 tries to withdraw the deposit, should fail because the balance is 0.
@@ -148,7 +152,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
       2: totalSupply1,
     } = await manager.getNativeTokenInfo(1900000, { from: accounts[8] });
     assert.equal(createdTime1.toNumber(), 0);
-    assert.equal(owner1, `0x${'0'.repeat(40)}`);
+    assert.equal(owner1, zeroAddr);
 
     // ----------------------- ROUND 2 -----------------------
     // Test for time extension when last-minute bid happens.
@@ -197,7 +201,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.bidNewToken(19004001, toWei(5), 1, { from: accounts[0], value: toWei(5) });
     await manager.accelerate(19004001, toWei(10), 1, { from: accounts[0], value: toWei(10) })
       .should.be.rejectedWith(revertError);
-    await manager.changeAccelerator(`0x${'0'.repeat(40)}`, { from: accounts[0] });
+    await manager.changeAccelerator(zeroAddr, { from: accounts[0] });
     await manager.accelerate(19004001, toWei(10), 1, { from: accounts[0], value: toWei(10) });
     await manager.accelerate(19004001, toWei(19), 1, { from: accounts[1], value: toWei(19) })
       .should.be.rejectedWith(revertError);
@@ -277,7 +281,7 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     } = await manager.getAuctionState();
     assert.equal(round1, 2);
     assert.equal(highestBid1, toWei(0));
-    assert.equal(highestBidder1, `0x${'0'.repeat(40)}`);
+    assert.equal(highestBidder1, zeroAddr);
 
     // A new bid is placed, round 2 starts.
     await manager.bidNewToken(19005003, toWei(5), 2, { from: accounts[4], value: toWei(5) });
