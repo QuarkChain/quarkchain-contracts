@@ -12,9 +12,9 @@ contract GeneralNativeTokenManager {
     }
 
     // Required caller for using native token to pay gas in QKC.
-    // Defaulting to the contract address itself will make sure the invocation can
-    // only be done in consensus, while allowing mock for unit testing.
-    address public payGasCaller = address(this);
+    // Setting to the contract address itself will make sure the invocation can
+    // only be done in consensus, while allowing mock for unit testing. Configured in cstor.
+    address public payGasCaller;
 
     // Contract admin in early stage. Capabilities are limited and may be unset.
     address public supervisor;
