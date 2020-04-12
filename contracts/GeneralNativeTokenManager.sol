@@ -40,8 +40,14 @@ contract GeneralNativeTokenManager {
     // A flag to freeze current gas reserve to prepare for migration.
     bool public frozen = false;
 
-    constructor (address _supervisor) public {
+    constructor (address _supervisor, address _payGasCaller) public {
         supervisor = _supervisor;
+        // If caller not specified, should be the contract address itself.
+        if (_payGasCaller == address(0)) {
+            payGasCaller = address(this);
+        } else {
+            payGasCaller = _payGasCaller;
+        }
         registrationRequired = true;
     }
 
@@ -61,11 +67,6 @@ contract GeneralNativeTokenManager {
     {
         minGasReserveMaintain = _minGasReserveMaintain;
         minGasReserveInit = _minGasReserveInit;
-    }
-
-    // Should only be for testing, otherwise no incentive to change.
-    function setCaller(address _payGasCaller) public onlySupervisor {
-        payGasCaller = _payGasCaller;
     }
 
     function updateSupervisor(address newSupervisor) public onlySupervisor {
