@@ -234,7 +234,7 @@ contract NonReservedNativeTokenManager {
 
         balances[_auction.highestBid.bidder] -= _auction.highestBid.newTokenPrice;
         // Burn the actual QKC.
-        address(0x2).transfer(_auction.highestBid.newTokenPrice);
+        address(0x0).transfer(_auction.highestBid.newTokenPrice);
 
         nativeTokens[_auction.highestBid.tokenId].owner = _auction.highestBid.bidder;
         nativeTokens[_auction.highestBid.tokenId].createAt = uint64(now);

@@ -9,10 +9,6 @@ const revertError = 'VM Exception while processing transaction: revert';
 const toWei = i => web3.utils.toWei(String(i));
 const web3SendAsync = promisify(web3.currentProvider.send);
 const zeroAddr = `0x${'0'.repeat(40)}`;
-const burner = `0x${'0'.repeat(39)}2`;
-
-// For EVM snapshot - revert workflow.
-let snapshotId;
 
 async function addDaysOnEVM(days) {
   const seconds = days * 3600 * 24;
@@ -31,18 +27,6 @@ async function addMinutesOnEVM(minutes) {
   });
   await web3SendAsync({
     jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0,
-  });
-}
-
-function snapshotEVM() {
-  return web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_snapshot', id: Date.now() + 1,
-  }).then(({ result }) => { snapshotId = result; });
-}
-
-function revertEVM() {
-  return web3SendAsync({
-    jsonrpc: '2.0', method: 'evm_revert', params: [snapshotId], id: Date.now() + 1,
   });
 }
 
@@ -129,9 +113,11 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
 
     await addDaysOnEVM(7);
     // The auction ends, Bidder 2 wins.
+    const balBefore = Number(await web3.eth.getBalance(zeroAddr));
     await manager.endAuction();
-    // Check burned QKC for round 0 and round 1.
-    assert.equal(await web3.eth.getBalance(burner), toWei(25 + 5));
+    // Check burned QKC for round 1.
+    const balNow = Number(await web3.eth.getBalance(zeroAddr));
+    assert(balNow >= balBefore + Number(toWei(25)));
     nativeToken = await manager.nativeTokens(19004002);
     assert.equal(nativeToken.owner, accounts[2]);
     // Bidder 2 tries to withdraw the deposit, should fail because the balance is 0.
@@ -141,7 +127,6 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     const {
       0: createdTime,
       1: owner,
-      2: totalSupply,
     } = await manager.getNativeTokenInfo(19004002, { from: accounts[8] });
     assert.notEqual(createdTime.toNumber(), 0);
     assert.equal(owner, accounts[2]);
@@ -149,7 +134,6 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     const {
       0: createdTime1,
       1: owner1,
-      2: totalSupply1,
     } = await manager.getNativeTokenInfo(1900000, { from: accounts[8] });
     assert.equal(createdTime1.toNumber(), 0);
     assert.equal(owner1, zeroAddr);
@@ -255,11 +239,8 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     assert.equal(nativeToken.owner, accounts[2]);
 
     const {
-      0: tokenId,
-      1: highestBid,
       2: highestBidder,
       3: round,
-      4: endTime,
     } = await manager.getAuctionState();
     assert.equal(round, 1);
     assert.equal(highestBidder, accounts[3]);
@@ -273,11 +254,9 @@ contract('NonReservedNativeTokenManager', async (accounts) => {
     await manager.resumeAuction({ from: accounts[0] });
     assert(!(await manager.isPaused()));
     const {
-      0: tokenId1,
       1: highestBid1,
       2: highestBidder1,
       3: round1,
-      4: endTime1,
     } = await manager.getAuctionState();
     assert.equal(round1, 2);
     assert.equal(highestBid1, toWei(0));
