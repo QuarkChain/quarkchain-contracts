@@ -12,9 +12,9 @@ contract GeneralNativeTokenManager {
     }
 
     // Required caller for using native token to pay gas in QKC.
-    // Defaulting to the contract address itself will make sure the invocation can
-    // only be done in consensus, while allowing mock for unit testing.
-    address public payGasCaller = address(this);
+    // Setting to the contract address itself will make sure the invocation can
+    // only be done in consensus, while allowing mock for unit testing. Configured in cstor.
+    address public payGasCaller;
 
     // Contract admin in early stage. Capabilities are limited and may be unset.
     address public supervisor;
@@ -40,8 +40,14 @@ contract GeneralNativeTokenManager {
     // A flag to freeze current gas reserve to prepare for migration.
     bool public frozen = false;
 
-    constructor (address _supervisor) public {
+    constructor (address _supervisor, address _payGasCaller) public {
         supervisor = _supervisor;
+        // If caller not specified, should be the contract address itself.
+        if (_payGasCaller == address(0)) {
+            payGasCaller = address(this);
+        } else {
+            payGasCaller = _payGasCaller;
+        }
         registrationRequired = true;
     }
 
@@ -61,11 +67,6 @@ contract GeneralNativeTokenManager {
     {
         minGasReserveMaintain = _minGasReserveMaintain;
         minGasReserveInit = _minGasReserveInit;
-    }
-
-    // Should only be for testing, otherwise no incentive to change.
-    function setCaller(address _payGasCaller) public onlySupervisor {
-        payGasCaller = _payGasCaller;
     }
 
     function updateSupervisor(address newSupervisor) public onlySupervisor {

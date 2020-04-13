@@ -11,7 +11,8 @@ contract('GeneralNativeTokenManager', async (accounts) => {
   let manager;
 
   beforeEach(async () => {
-    manager = await GeneralNativeTokenManager.new(accounts[0]);
+    // Use account 3 as the caller for debugging purposes.
+    manager = await GeneralNativeTokenManager.new(accounts[0], accounts[3]);
     manager.setMinGasReserve(toWei(2), toWei(2), { from: accounts[0] });
   });
 
@@ -85,7 +86,6 @@ contract('GeneralNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
 
     // Test converting native tokens to QKC as gas.
-    await manager.setCaller(accounts[3], { from: accounts[0] });
     await manager.payAsGas(123, toWei(7), 1, { from: accounts[3] });
     // Check the total deposit. toWei(22) - toWei(7) * 3 = toWei(1).
     assert.equal(await manager.gasReserveBalance(123, accounts[1]), toWei(1));
@@ -127,7 +127,6 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     await manager.proposeNewExchangeRate(123, 1, 2, { from: accounts[1], value: toWei(10) })
       .should.be.rejectedWith(revertError);
 
-    await manager.setCaller(accounts[3], { from: accounts[0] });
     await manager.payAsGas(123, toWei(7), 1, { from: accounts[3] });
     assert.equal(await manager.gasReserveBalance(123, accounts[0]), toWei(8));
 
@@ -150,7 +149,6 @@ contract('GeneralNativeTokenManager', async (accounts) => {
       .should.be.rejectedWith(revertError);
     // Paying as gas should succeed.
     const caller = accounts[3];
-    await manager.setCaller(caller, { from: accounts[0] });
     await manager.payAsGas(123, toWei(1), 1, { from: caller });
     assert.equal(await manager.gasReserveBalance(123, accounts[0]), toWei(5 - 1));
 
