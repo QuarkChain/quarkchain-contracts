@@ -120,7 +120,7 @@ contract GeneralNativeTokenManager {
         // the rate can be replaced after reducing the reserved QKC to be lower than maintain by
         // sending tx with gas price = 1.
         require(
-            rateNumerator * 21000 < uint256(minGasReserveMaintain) * rateDenominator,
+            uint256(rateNumerator) * 21000 < uint256(minGasReserveMaintain) * rateDenominator,
             "Requires exchange rate * 21000 < minGasReserveMaintain."
         );
 

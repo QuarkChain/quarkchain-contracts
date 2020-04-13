@@ -163,5 +163,15 @@ contract('GeneralNativeTokenManager', async (accounts) => {
     // Liquidity provider can withdraw.
     await manager.withdrawGasReserve(123, { from: accounts[0] });
   });
+
+  it('should verify rate numbers correctly', async () => {
+    // The supervisor turn off the token registration switch.
+    await manager.requireTokenRegistration(false);
+    // Should fail as the rate is too big.
+    // Note that this test is added to guard against uint128 overflow, where if the numerator
+    // in contract is not casted to uint256 then proposing will pass, which is incorrect.
+    await manager.proposeNewExchangeRate(123, '170141183460469231731687303715884105728', 1, { from: accounts[0], value: toWei(2) })
+      .should.be.rejectedWith(revertError);
+  });
 });
 
