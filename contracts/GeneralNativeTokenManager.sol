@@ -90,6 +90,7 @@ contract GeneralNativeTokenManager {
         }
         // Token ID is guaranteed to be less than maximum of uint128.
         uint128 tokenId = uint128(output[0]);
+        require(tokenId != 0x8bb0, "Default token cannot be registered.");
         require(!registeredTokens[tokenId], "Token already registered.");
         registeredTokens[tokenId] = true;
         // Update native token balance for future withdrawal.
