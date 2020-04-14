@@ -49,6 +49,8 @@ contract GeneralNativeTokenManager {
             payGasCaller = _payGasCaller;
         }
         registrationRequired = true;
+        // QKC cannot be registered again.
+        registeredTokens[0x8bb0] = true;
     }
 
     modifier onlySupervisor {
