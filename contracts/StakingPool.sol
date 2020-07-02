@@ -70,7 +70,6 @@ contract StakingPool {
 
         info.stakes += msg.value;
         totalStakes = totalStakes.add(msg.value);
-        require(totalStakes >= msg.value, "Addition overflow.");
     }
 
     function withdrawStakes(uint256 amount) public {
