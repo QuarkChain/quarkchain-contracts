@@ -126,6 +126,15 @@ contract StakingPool {
         miner = _miner;
     }
 
+    function updateAdmin(address _admin) external onlyAdmin {
+        admin = _admin;
+    }
+
+    function updatePoolMaintainer(address payable _poolMaintainer) external onlyPoolMaintainer {
+        calculatePayout();
+        poolMaintainer = _poolMaintainer;
+    }
+
     function adjustMinerFeeRate(uint256 _minerFeeRateBp) external onlyAdmin {
         require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         require(
