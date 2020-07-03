@@ -17,6 +17,7 @@ contract StakingPool {
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     address public admin;
+    uint256 public minStakes;
     uint256 public totalStakes;
     uint256 public maxStakers;
 
@@ -33,6 +34,7 @@ contract StakingPool {
         address _miner,
         address _admin,
         address _poolMaintainer,
+        uint256 _minStakes,
         uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
         uint256 _maxStakers
@@ -48,6 +50,7 @@ contract StakingPool {
         miner = _miner;
         admin = _admin;
         poolMaintainer = _poolMaintainer;
+        minStakes = _minStakes;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
@@ -59,6 +62,7 @@ contract StakingPool {
 
     // Add stakes
     function () external payable {
+        require(minStakes <= msg.value, "Invalid stakes.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
