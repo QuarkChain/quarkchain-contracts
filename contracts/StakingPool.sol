@@ -17,11 +17,13 @@ contract StakingPool {
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     address public admin;
+    string  public adminContactInfo;
     uint256 public totalStakes;
     uint256 public maxStakers;
 
     // Miner fee rate in basis point.
     address public miner;
+    string  public minerContactInfo;
     uint256 public minerFeeRateBp;
     uint256 public minerReward;
     // Mining pool maintainer and corresponding fee structure.
@@ -31,7 +33,9 @@ contract StakingPool {
 
     constructor(
         address _miner,
+        string  memory _minerContactInfo,
         address _admin,
+        string  memory _adminContactInfo,
         address _poolMaintainer,
         uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
@@ -46,7 +50,9 @@ contract StakingPool {
             "Fee rate should be in basis point."
         );
         miner = _miner;
+        minerContactInfo = _minerContactInfo;
         admin = _admin;
+        adminContactInfo = _adminContactInfo;
         poolMaintainer = _poolMaintainer;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
@@ -126,8 +132,16 @@ contract StakingPool {
         miner = _miner;
     }
 
+    function updateMinerContactInfo(string calldata _minerContactInfo) external onlyMiner {
+        minerContactInfo = _minerContactInfo;
+    }
+
     function updateAdmin(address _admin) external onlyAdmin {
         admin = _admin;
+    }
+
+    function updateAdminContactInfo(string calldata _adminContactInfo) external onlyAdmin {
+        adminContactInfo = _adminContactInfo;
     }
 
     function updatePoolMaintainer(address payable _poolMaintainer) external onlyPoolMaintainer {
