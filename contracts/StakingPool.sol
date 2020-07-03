@@ -19,6 +19,7 @@ contract StakingPool {
     address public admin;
     uint256 public totalStakes;
     uint256 public maxStakers;
+    uint256 public maturityTime;
 
     // Miner fee rate in basis point.
     address public miner;
@@ -35,7 +36,8 @@ contract StakingPool {
         address _poolMaintainer,
         uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
-        uint256 _maxStakers
+        uint256 _maxStakers,
+        uint256 _maturityTime
     )
         public
     {
@@ -45,12 +47,14 @@ contract StakingPool {
             _minerFeeRateBp + _poolMaintainerFeeRateBp <= MAX_BP,
             "Fee rate should be in basis point."
         );
+        require(_maturityTime > now, "Maturity time should be later than now.");
         miner = _miner;
         admin = _admin;
         poolMaintainer = _poolMaintainer;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
+        maturityTime = _maturityTime; // timestamp(seconds)
     }
 
     function poolSize() public view returns (uint256) {
@@ -169,10 +173,14 @@ contract StakingPool {
         totalStakes = totalStakes.add(totalPaid);
 
         uint256 totalFee = dividend.sub(totalPaid);
-        uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
-        uint256 feeForMaintainer = totalFee.sub(feeForMiner);
-        poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
-        minerReward = minerReward.add(feeForMiner);
+        if (maturityTime + 24*60*60 > now) { // One extra day for miner's operation
+            uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
+            minerReward = minerReward.add(feeForMiner);
+            uint256 feeForMaintainer = totalFee.sub(feeForMiner);
+            poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
+        } else {
+            poolMaintainerFee = poolMaintainerFee.add(totalFee);
+        }
         assert(balance >= totalStakes);
     }
 
