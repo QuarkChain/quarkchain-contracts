@@ -17,11 +17,13 @@ contract StakingPool {
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     address public admin;
+    string  public adminContactInfo;
     uint256 public totalStakes;
     uint256 public maxStakers;
 
     // Miner fee rate in basis point.
     address public miner;
+    string  public minerContactInfo;
     uint256 public minerFeeRateBp;
     uint256 public minerReward;
     // Mining pool maintainer and corresponding fee structure.
@@ -31,7 +33,9 @@ contract StakingPool {
 
     constructor(
         address _miner,
+        string  memory _minerContactInfo,
         address _admin,
+        string  memory _adminContactInfo,
         address _poolMaintainer,
         uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
@@ -46,11 +50,28 @@ contract StakingPool {
             "Fee rate should be in basis point."
         );
         miner = _miner;
+        minerContactInfo = _minerContactInfo;
         admin = _admin;
+        adminContactInfo = _adminContactInfo;
         poolMaintainer = _poolMaintainer;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
+    }
+
+    modifier onlyMiner() {
+        require(msg.sender == miner, "Only miner can call this function.");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function.");
+        _;
+    }
+
+    modifier onlyPoolMaintainer() {
+        require(msg.sender == poolMaintainer, "Only pool maintainer can call this function.");
+        _;
     }
 
     function poolSize() public view returns (uint256) {
@@ -91,30 +112,43 @@ contract StakingPool {
         }
     }
 
-    function withdrawMinerReward() public {
-        require(msg.sender == miner, "Only miner can withdraw rewards.");
+    function withdrawMinerReward() public onlyMiner {
         calculatePayout();
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
     }
 
-    function transferMaintainerFee() public {
-        require(msg.sender == poolMaintainer, "Only pool maintainer can get the maitainance fee.");
+    function transferMaintainerFee() public onlyPoolMaintainer {
         calculatePayout();
         uint256 toTransfer = poolMaintainerFee;
         poolMaintainerFee = 0;
         msg.sender.transfer(toTransfer);
     }
 
-    function updateMiner(address payable _miner) public {
-        require(msg.sender == miner, "Only miner can update the address.");
+    function updateMiner(address payable _miner) public onlyMiner {
         calculatePayout();
         miner = _miner;
     }
 
-    function adjustMinerFeeRate(uint256 _minerFeeRateBp) public {
-        require(msg.sender == admin, "Only admin can adjust miner fee rate.");
+    function updateMinerContactInfo(string memory _minerContactInfo) public onlyMiner {
+        minerContactInfo = _minerContactInfo;
+    }
+
+    function updateAdmin(address _admin) public onlyAdmin {
+        admin = _admin;
+    }
+
+    function updateAdminContactInfo(string memory _adminContactInfo) public onlyAdmin {
+        adminContactInfo = _adminContactInfo;
+    }
+
+    function updatePoolMaintainer(address payable _poolMaintainer) public onlyPoolMaintainer {
+        calculatePayout();
+        poolMaintainer = _poolMaintainer;
+    }
+
+    function adjustMinerFeeRate(uint256 _minerFeeRateBp) public onlyAdmin {
         require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         require(
             _minerFeeRateBp + poolMaintainerFeeRateBp <= MAX_BP,
