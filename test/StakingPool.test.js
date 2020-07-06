@@ -49,7 +49,9 @@ function revertEVM() {
 contract('StakingPool', async (accounts) => {
   let pool;
   const miner = accounts[9];
+  const minerContactInfo = 'miner@stakingpool';
   const admin = accounts[8];
+  const adminContactInfo = 'admin@stakingpool';
   const maintainer = accounts[7];
   const treasury = accounts[6];
   // 50% miner fee rate.
@@ -62,7 +64,9 @@ contract('StakingPool', async (accounts) => {
   beforeEach(async () => {
     pool = await StakingPool.new(
       miner,
+      minerContactInfo,
       admin,
+      adminContactInfo,
       maintainer,
       minerFeeRateBp,
       poolMaintainerFeeRateBp,
@@ -241,7 +245,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle maintainer fee correctly', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
     // Stakes should be calculated correctly.
@@ -266,7 +270,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle no staker case with pool maintainer', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, admin, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
 
     await forceSend(pool.address, toWei(10), treasury);
     // Miner should take 50/(50+12.5) * 10 = 8.
@@ -277,7 +281,7 @@ contract('StakingPool', async (accounts) => {
     assert.equal((await pool.estimatePoolMaintainerFee()), toWei(2));
   });
 
-  it('should handle maturity time correctluy', async () => {
+  it('should handle maturity time correctly', async () => {
     await pool.sendTransaction(txGen(accounts[0], toWei(42)));
     await forceSend(pool.address, toWei(8), treasury);
     // State has not been updated.
@@ -300,5 +304,39 @@ contract('StakingPool', async (accounts) => {
     minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(4));
     await revertEVM();
+  });
+
+  it('should update miner and admin contact infomation correctly', async () => {
+    assert.equal(((await pool.minerContactInfo())), minerContactInfo);
+    assert.equal(((await pool.adminContactInfo())), adminContactInfo);
+
+    // Fail if not miner
+    await pool.updateMinerContactInfo('miner0@stakingpool')
+      .should.be.rejectedWith(revertError);
+    // Fail if not admin
+    await pool.updateAdminContactInfo('admin0@stakingpool')
+      .should.be.rejectedWith(revertError);
+    // Succeed
+    await pool.updateMinerContactInfo('miner0@stakingpool', { from: miner });
+    assert.equal(((await pool.minerContactInfo())), 'miner0@stakingpool');
+    await pool.updateAdminContactInfo('admin0@stakingpool', { from: admin });
+    assert.equal(((await pool.adminContactInfo())), 'admin0@stakingpool');
+  });
+
+  it('should update admin and pool maintainer correctly', async () => {
+    assert.equal(((await pool.admin())), admin);
+    assert.equal(((await pool.poolMaintainer())), maintainer);
+
+    // Fail if not admin
+    await pool.updateAdmin(accounts[4])
+      .should.be.rejectedWith(revertError);
+    // Fail if not poolMaintainer
+    await pool.updatePoolMaintainer(accounts[3])
+      .should.be.rejectedWith(revertError);
+    // Succeed
+    await pool.updateAdmin(accounts[4], { from: admin });
+    assert.equal(((await pool.admin())), accounts[4]);
+    await pool.updatePoolMaintainer(accounts[3], { from: maintainer });
+    assert.equal(((await pool.poolMaintainer())), accounts[3]);
   });
 });
