@@ -72,9 +72,8 @@ contract StakingPool {
             stakers.push(msg.sender);
         }
 
-        info.stakes += msg.value;
+        info.stakes = info.stakes.add(msg.value);
         totalStakes = totalStakes.add(msg.value);
-        require(totalStakes >= msg.value, "Addition overflow.");
     }
 
     function withdrawStakes(uint256 amount) public {
@@ -83,15 +82,15 @@ contract StakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
-        info.stakes -= amount;
-        totalStakes -= amount;
+        info.stakes = info.stakes.sub(amount);
+        totalStakes = totalStakes.sub(amount);
 
         msg.sender.transfer(amount);
 
         if (info.stakes == 0) {
-            stakerInfo[stakers[stakers.length - 1]].arrPos = info.arrPos;
-            stakers[info.arrPos] = stakers[stakers.length - 1];
-            stakers.length--;
+            stakerInfo[stakers[stakers.length.sub(1)]].arrPos = info.arrPos;
+            stakers[info.arrPos] = stakers[stakers.length.sub(1)];
+            stakers.length = stakers.length.sub(1);
             delete stakerInfo[msg.sender];
         }
     }
@@ -138,7 +137,7 @@ contract StakingPool {
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         StakerInfo storage info = stakerInfo[staker];
         uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
-        return info.stakes + toPay;
+        return info.stakes.add(toPay);
     }
 
     function estimateMinerReward() public view returns (uint256) {
@@ -155,7 +154,7 @@ contract StakingPool {
 
     function calculatePayout() private {
         // When adding stakes, need to exclude the current message
-        uint256 balance = address(this).balance - msg.value;
+        uint256 balance = address(this).balance.sub(msg.value);
         uint256 dividend = getDividend(balance);
         if (dividend == 0) {
             return;
@@ -192,6 +191,6 @@ contract StakingPool {
     function getDividend(uint256 balance) private view returns (uint256) {
         uint256 recordedAmount = totalStakes.add(minerReward).add(poolMaintainerFee);
         require(balance >= recordedAmount, "Should have enough balance.");
-        return balance - recordedAmount;
+        return balance.sub(recordedAmount);
     }
 }
