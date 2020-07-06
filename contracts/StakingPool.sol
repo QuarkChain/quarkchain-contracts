@@ -83,6 +83,8 @@ contract StakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
+        // solium-disable-next-line max-len
+        require(info.stakes.sub(amount) == 0 || info.stakes.sub(amount) >= minStakes, "Should satisfy minimum stakes.");
         info.stakes -= amount;
         totalStakes -= amount;
 

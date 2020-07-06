@@ -60,6 +60,9 @@ contract('StakingPool', async (accounts) => {
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(1));
+
+    await pool.withdrawStakes(toWei(0.1)).should.be.rejectedWith(revertError);
+    await pool.withdrawStakes(toWei(1));
   });
 
   it('should handle adding stakes properly', async () => {
