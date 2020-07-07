@@ -193,18 +193,16 @@ contract StakingPool {
         if (dividend == 0) {
             return;
         }
+        uint256 totalPaid = 0;
         if (maturityTime + 24*60*60 > now) { // One extra day for miner's operation
             uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
             uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
-            uint256 totalPaid = 0;
             for (uint256 i = 0; i < stakers.length; i++) {
                 StakerInfo storage info = stakerInfo[stakers[i]];
                 uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
                 totalPaid = totalPaid.add(toPay);
                 info.stakes = info.stakes.add(toPay);
             }
-
-            totalStakes = totalStakes.add(totalPaid);
 
             uint256 totalFee = dividend.sub(totalPaid);
             uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
@@ -215,10 +213,11 @@ contract StakingPool {
             for (uint256 i = 0; i < stakers.length; i++) {
                 StakerInfo storage info = stakerInfo[stakers[i]];
                 uint256 toPay = dividend.mul(info.stakes).div(totalStakes);
+                totalPaid = totalPaid.add(toPay);
                 info.stakes = info.stakes.add(toPay);
             }
-            totalStakes = totalStakes.add(dividend);
         }
+        totalStakes = totalStakes.add(totalPaid);
         assert(balance >= totalStakes);
     }
 
