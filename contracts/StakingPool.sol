@@ -1,9 +1,10 @@
 pragma solidity >0.4.99 <0.6.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
 
 
-contract StakingPool {
+contract StakingPool is ReentrancyGuard {
 
     using SafeMath for uint256;
 
@@ -93,7 +94,7 @@ contract StakingPool {
         totalStakes = totalStakes.add(msg.value);
     }
 
-    function withdrawStakes(uint256 amount) external {
+    function withdrawStakes(uint256 amount) external nonReentrant {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
@@ -111,14 +112,14 @@ contract StakingPool {
         }
     }
 
-    function withdrawMinerReward() external onlyMiner {
+    function withdrawMinerReward() external onlyMiner nonReentrant {
         calculatePayout();
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
     }
 
-    function transferMaintainerFee() external onlyPoolMaintainer {
+    function transferMaintainerFee() external onlyPoolMaintainer nonReentrant {
         calculatePayout();
         uint256 toTransfer = poolMaintainerFee;
         poolMaintainerFee = 0;
