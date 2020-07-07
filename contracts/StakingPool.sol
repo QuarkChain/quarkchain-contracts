@@ -98,7 +98,6 @@ contract StakingPool {
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
-        require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes = info.stakes.sub(amount);
         totalStakes = totalStakes.sub(amount);
 
@@ -211,7 +210,6 @@ contract StakingPool {
 
     function getDividend(uint256 balance) private view returns (uint256) {
         uint256 recordedAmount = totalStakes.add(minerReward).add(poolMaintainerFee);
-        require(balance >= recordedAmount, "Should have enough balance.");
         return balance.sub(recordedAmount);
     }
 }
