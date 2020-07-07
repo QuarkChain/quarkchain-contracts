@@ -83,11 +83,11 @@ contract StakingPool {
 
     // Add stakes
     function () external payable {
-        require(minStakes <= msg.value, "Invalid stakes.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
+            require(info.stakes.add(msg.value) >= minStakes, "Invalid stakes.");
             require(stakers.length < maxStakers, "Too many stakers.");
             info.arrPos = stakers.length;
             stakers.push(msg.sender);
