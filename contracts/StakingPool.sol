@@ -130,7 +130,7 @@ contract StakingPool {
         miner = _miner;
     }
 
-    function updateMinerContactInfo(string memory _minerContactInfo) external onlyMiner {
+    function updateMinerContactInfo(string calldata _minerContactInfo) external onlyMiner {
         minerContactInfo = _minerContactInfo;
     }
 
@@ -138,7 +138,7 @@ contract StakingPool {
         admin = _admin;
     }
 
-    function updateAdminContactInfo(string memory _adminContactInfo) external onlyAdmin {
+    function updateAdminContactInfo(string calldata _adminContactInfo) external onlyAdmin {
         adminContactInfo = _adminContactInfo;
     }
 
