@@ -131,7 +131,7 @@ contract StakingPool is ReentrancyGuard {
         miner = _miner;
     }
 
-    function updateMinerContactInfo(string calldata _minerContactInfo) public onlyMiner {
+    function updateMinerContactInfo(string memory _minerContactInfo) public onlyMiner {
         minerContactInfo = _minerContactInfo;
     }
 
@@ -139,7 +139,7 @@ contract StakingPool is ReentrancyGuard {
         admin = _admin;
     }
 
-    function updateAdminContactInfo(string calldata _adminContactInfo) public onlyAdmin {
+    function updateAdminContactInfo(string memory _adminContactInfo) public onlyAdmin {
         adminContactInfo = _adminContactInfo;
     }
 
