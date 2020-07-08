@@ -75,7 +75,7 @@ contract StakingPool is ReentrancyGuard {
         _;
     }
 
-    function poolSize() external view returns (uint256) {
+    function poolSize() public view returns (uint256) {
         return stakers.length;
     }
 
@@ -94,7 +94,7 @@ contract StakingPool is ReentrancyGuard {
         totalStakes = totalStakes.add(msg.value);
     }
 
-    function withdrawStakes(uint256 amount) external nonReentrant {
+    function withdrawStakes(uint256 amount) public nonReentrant {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
@@ -112,43 +112,43 @@ contract StakingPool is ReentrancyGuard {
         }
     }
 
-    function withdrawMinerReward() external onlyMiner nonReentrant {
+    function withdrawMinerReward() public onlyMiner nonReentrant {
         calculatePayout();
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
     }
 
-    function transferMaintainerFee() external onlyPoolMaintainer nonReentrant {
+    function transferMaintainerFee() public onlyPoolMaintainer nonReentrant {
         calculatePayout();
         uint256 toTransfer = poolMaintainerFee;
         poolMaintainerFee = 0;
         msg.sender.transfer(toTransfer);
     }
 
-    function updateMiner(address payable _miner) external onlyMiner {
+    function updateMiner(address payable _miner) public onlyMiner {
         calculatePayout();
         miner = _miner;
     }
 
-    function updateMinerContactInfo(string calldata _minerContactInfo) external onlyMiner {
+    function updateMinerContactInfo(string calldata _minerContactInfo) public onlyMiner {
         minerContactInfo = _minerContactInfo;
     }
 
-    function updateAdmin(address _admin) external onlyAdmin {
+    function updateAdmin(address _admin) public onlyAdmin {
         admin = _admin;
     }
 
-    function updateAdminContactInfo(string calldata _adminContactInfo) external onlyAdmin {
+    function updateAdminContactInfo(string calldata _adminContactInfo) public onlyAdmin {
         adminContactInfo = _adminContactInfo;
     }
 
-    function updatePoolMaintainer(address payable _poolMaintainer) external onlyPoolMaintainer {
+    function updatePoolMaintainer(address payable _poolMaintainer) public onlyPoolMaintainer {
         calculatePayout();
         poolMaintainer = _poolMaintainer;
     }
 
-    function adjustMinerFeeRate(uint256 _minerFeeRateBp) external onlyAdmin {
+    function adjustMinerFeeRate(uint256 _minerFeeRateBp) public onlyAdmin {
         require(_minerFeeRateBp <= MAX_BP, "Fee rate should be in basis point.");
         require(
             _minerFeeRateBp + poolMaintainerFeeRateBp <= MAX_BP,
@@ -158,7 +158,7 @@ contract StakingPool is ReentrancyGuard {
         minerFeeRateBp = _minerFeeRateBp;
     }
 
-    function calculateStakesWithDividend(address staker) external view returns (uint256) {
+    function calculateStakesWithDividend(address staker) public view returns (uint256) {
         if (totalStakes == 0) {
             return 0;
         }
@@ -170,13 +170,13 @@ contract StakingPool is ReentrancyGuard {
         return info.stakes.add(toPay);
     }
 
-    function estimateMinerReward() external view returns (uint256) {
+    function estimateMinerReward() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance).mul(minerFeeRateBp).div(
             stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return minerReward.add(dividend);
     }
 
-    function estimatePoolMaintainerFee() external view returns (uint256) {
+    function estimatePoolMaintainerFee() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance).mul(poolMaintainerFeeRateBp).div(
             stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return poolMaintainerFee.add(dividend);
