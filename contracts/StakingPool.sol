@@ -1,9 +1,10 @@
 pragma solidity >0.4.99 <0.6.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
 
 
-contract StakingPool {
+contract StakingPool is ReentrancyGuard {
 
     using SafeMath for uint256;
 
@@ -93,12 +94,11 @@ contract StakingPool {
         totalStakes = totalStakes.add(msg.value);
     }
 
-    function withdrawStakes(uint256 amount) public {
+    function withdrawStakes(uint256 amount) public nonReentrant {
         require(amount > 0, "Invalid withdrawal.");
         calculatePayout();
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
-        require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         info.stakes = info.stakes.sub(amount);
         totalStakes = totalStakes.sub(amount);
 
@@ -112,14 +112,14 @@ contract StakingPool {
         }
     }
 
-    function withdrawMinerReward() public onlyMiner {
+    function withdrawMinerReward() public onlyMiner nonReentrant {
         calculatePayout();
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
     }
 
-    function transferMaintainerFee() public onlyPoolMaintainer {
+    function transferMaintainerFee() public onlyPoolMaintainer nonReentrant {
         calculatePayout();
         uint256 toTransfer = poolMaintainerFee;
         poolMaintainerFee = 0;
@@ -211,7 +211,6 @@ contract StakingPool {
 
     function getDividend(uint256 balance) private view returns (uint256) {
         uint256 recordedAmount = totalStakes.add(minerReward).add(poolMaintainerFee);
-        require(balance >= recordedAmount, "Should have enough balance.");
         return balance.sub(recordedAmount);
     }
 }
