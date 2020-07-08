@@ -87,7 +87,7 @@ contract StakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
-            require(info.stakes.add(msg.value) >= minStakes, "Invalid stakes.");
+            require(msg.value >= minStakes, "Invalid stakes.");
             require(stakers.length < maxStakers, "Too many stakers.");
             info.arrPos = stakers.length;
             stakers.push(msg.sender);
