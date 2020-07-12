@@ -17,6 +17,7 @@ contract StakingPool {
     mapping (address => StakerInfo) public stakerInfo;
     address[] public stakers;
     address public admin;
+    uint256 public minStakes;
     string  public adminContactInfo;
     uint256 public totalStakes;
     uint256 public maxStakers;
@@ -37,6 +38,7 @@ contract StakingPool {
         address _admin,
         string  memory _adminContactInfo,
         address _poolMaintainer,
+        uint256 _minStakes,
         uint256 _minerFeeRateBp,
         uint256 _poolMaintainerFeeRateBp,
         uint256 _maxStakers
@@ -54,6 +56,7 @@ contract StakingPool {
         admin = _admin;
         adminContactInfo = _adminContactInfo;
         poolMaintainer = _poolMaintainer;
+        minStakes = _minStakes;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
         maxStakers = _maxStakers;
@@ -84,6 +87,7 @@ contract StakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
         if (info.stakes == 0) {
+            require(msg.value >= minStakes, "Invalid stakes.");
             require(stakers.length < maxStakers, "Too many stakers.");
             info.arrPos = stakers.length;
             stakers.push(msg.sender);
@@ -99,6 +103,10 @@ contract StakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
+        require(
+            info.stakes.sub(amount) == 0 || info.stakes.sub(amount) >= minStakes,
+            "Should satisfy minimum stakes."
+        );
         info.stakes = info.stakes.sub(amount);
         totalStakes = totalStakes.sub(amount);
 
