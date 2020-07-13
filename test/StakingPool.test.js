@@ -60,6 +60,7 @@ contract('StakingPool', async (accounts) => {
   const poolMaintainerFeeRateBp = 0;
   const maxStakers = 16;
   const maturityTime = 1893427200; // 2030-01-01
+  const minStakes = toWei(1);
 
   beforeEach(async () => {
     pool = await StakingPool.new(
@@ -68,6 +69,7 @@ contract('StakingPool', async (accounts) => {
       admin,
       adminContactInfo,
       maintainer,
+      minStakes,
       minerFeeRateBp,
       poolMaintainerFeeRateBp,
       maxStakers,
@@ -77,6 +79,21 @@ contract('StakingPool', async (accounts) => {
 
   it('should deploy correctly', async () => {
     assert.notEqual(pool.address, `0x${'0'.repeat(40)}`);
+  });
+
+  it('should work with minStakes correctly', async () => {
+    const min = await pool.minStakes();
+    assert.equal(min, toWei(1));
+
+    await pool.sendTransaction(txGen(accounts[0], toWei(0.1)))
+      .should.be.rejectedWith(revertError);
+
+    await pool.sendTransaction(txGen(accounts[0], toWei(1)));
+    const stakerInfo = await pool.stakerInfo(accounts[0]);
+    assert.equal(stakerInfo[0], toWei(1));
+
+    await pool.withdrawStakes(toWei(0.1)).should.be.rejectedWith(revertError);
+    await pool.withdrawStakes(toWei(1));
   });
 
   it('should handle adding stakes properly', async () => {
@@ -245,7 +262,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle maintainer fee correctly', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers, maturityTime);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
     // Stakes should be calculated correctly.
@@ -270,7 +287,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle no staker case with pool maintainer', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minerFeeRateBp, 1250, maxStakers, maturityTime);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers, maturityTime);
 
     await forceSend(pool.address, toWei(10), treasury);
     // Miner should take 50/(50+12.5) * 10 = 8.
