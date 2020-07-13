@@ -194,29 +194,29 @@ contract StakingPool {
             return;
         }
         uint256 totalPaid = 0;
-        if (maturityTime + 24*60*60 > now) { // One extra day for miner's operation
-            uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
-            uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
-            for (uint256 i = 0; i < stakers.length; i++) {
-                StakerInfo storage info = stakerInfo[stakers[i]];
-                uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
-                totalPaid = totalPaid.add(toPay);
-                info.stakes = info.stakes.add(toPay);
-            }
+        uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
+        if (maturityTime + 246060 <= now) {
+            feeRateBp = 0;
+        }
 
+        uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        for (uint256 i = 0; i < stakers.length; i++) {
+            StakerInfo storage info = stakerInfo[stakers[i]];
+            uint256 toPay = stakerPayout.mul(info.stakes).div(totalStakes);
+            totalPaid = totalPaid.add(toPay);
+            info.stakes = info.stakes.add(toPay);
+        }
+
+        if (feeRateBp != 0) {
             uint256 totalFee = dividend.sub(totalPaid);
+            // For miner
             uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
             minerReward = minerReward.add(feeForMiner);
+            // For pool maintainer
             uint256 feeForMaintainer = totalFee.sub(feeForMiner);
             poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
-        } else {
-            for (uint256 i = 0; i < stakers.length; i++) {
-                StakerInfo storage info = stakerInfo[stakers[i]];
-                uint256 toPay = dividend.mul(info.stakes).div(totalStakes);
-                totalPaid = totalPaid.add(toPay);
-                info.stakes = info.stakes.add(toPay);
-            }
         }
+
         totalStakes = totalStakes.add(totalPaid);
         assert(balance >= totalStakes);
     }
