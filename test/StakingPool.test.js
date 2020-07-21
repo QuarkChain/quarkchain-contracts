@@ -9,6 +9,7 @@ require('chai').use(require('chai-as-promised')).should();
 const revertError = 'VM Exception while processing transaction: revert';
 const toWei = i => web3.utils.toWei(String(i));
 const gasPriceMax = 0;
+const web3SendAsync = promisify(web3.currentProvider.send);
 
 function txGen(from, value) {
   return {
@@ -19,6 +20,30 @@ function txGen(from, value) {
 async function forceSend(target, value, from) {
   const selfDestruct = await SelfDestruct.new({ value, from });
   await selfDestruct.forceSend(target);
+}
+
+let snapshotId;
+
+async function addDaysOnEVM(days) {
+  const seconds = days * 3600 * 24;
+  await web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_increaseTime', params: [seconds], id: 0,
+  });
+  await web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0,
+  });
+}
+
+function snapshotEVM() {
+  return web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_snapshot', id: Date.now() + 1,
+  }).then(({ result }) => { snapshotId = result; });
+}
+
+function revertEVM() {
+  return web3SendAsync({
+    jsonrpc: '2.0', method: 'evm_revert', params: [snapshotId], id: Date.now() + 1,
+  });
 }
 
 contract('StakingPool', async (accounts) => {
@@ -34,6 +59,7 @@ contract('StakingPool', async (accounts) => {
   // None goes to maintainer.
   const poolMaintainerFeeRateBp = 0;
   const maxStakers = 16;
+  const maturityTime = 1893427200; // 2030-01-01
   const minStakes = toWei(1);
 
   beforeEach(async () => {
@@ -47,6 +73,7 @@ contract('StakingPool', async (accounts) => {
       minerFeeRateBp,
       poolMaintainerFeeRateBp,
       maxStakers,
+      maturityTime,
     );
   });
 
@@ -235,7 +262,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle maintainer fee correctly', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers, maturityTime);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
     // Stakes should be calculated correctly.
@@ -260,7 +287,7 @@ contract('StakingPool', async (accounts) => {
   it('should handle no staker case with pool maintainer', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers);
+    pool = await StakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers, maturityTime);
 
     await forceSend(pool.address, toWei(10), treasury);
     // Miner should take 50/(50+12.5) * 10 = 8.
@@ -269,6 +296,31 @@ contract('StakingPool', async (accounts) => {
     // While maintainer should take 12.5/(50+12.5) * 10 = 2;
     assert.equal((await pool.poolMaintainerFee()), 0);
     assert.equal((await pool.estimatePoolMaintainerFee()), toWei(2));
+  });
+
+  it('should handle maturity time correctly', async () => {
+    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await forceSend(pool.address, toWei(8), treasury);
+    // State has not been updated.
+    let minerReward = await pool.minerReward();
+    assert.equal(minerReward, 0);
+    await pool.withdrawStakes(toWei(10));
+    // 50% of coinbase rewards goes to miner.
+    minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(4));
+
+    // After ten years.
+    await snapshotEVM();
+    await addDaysOnEVM(3650);
+    await forceSend(pool.address, toWei(8), treasury);
+    // State has not been updated.
+    minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(4));
+    await pool.withdrawStakes(toWei(10));
+    // Rewards for miner shouldn't be updated.
+    minerReward = await pool.minerReward();
+    assert.equal(minerReward, toWei(4));
+    await revertEVM();
   });
 
   it('should update miner and admin contact infomation correctly', async () => {
