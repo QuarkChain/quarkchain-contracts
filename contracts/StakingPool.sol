@@ -214,6 +214,7 @@ contract StakingPool {
             totalPaid = totalPaid.add(toPay);
             info.stakes = info.stakes.add(toPay);
         }
+        totalStakes = totalStakes.add(totalPaid);
 
         if (feeRateBp != 0) {
             uint256 totalFee = dividend.sub(totalPaid);
@@ -225,8 +226,7 @@ contract StakingPool {
             poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
         }
 
-        totalStakes = totalStakes.add(totalPaid);
-        assert(balance >= totalStakes);
+        assert(balance >= totalStakes.add(minerReward).add(poolMaintainerFee));
     }
 
     function getDividend(uint256 balance) private view returns (uint256) {
