@@ -44,8 +44,6 @@ contract RootChainStakingPool {
     uint256 public poolMaintainerFeeRateBp;
     uint256 public poolMaintainerFee;
 
-    event Update(uint256 x, uint256 y, uint256 z);
-
     constructor(
         address _miner,
         string  memory _minerContactInfo,
@@ -113,7 +111,6 @@ contract RootChainStakingPool {
         info.stakes = info.stakes.add(pending).add(msg.value);
         info.rewardDebt = info.stakes.mul(accQKCPershare).div(1e18);
         totalStakes = totalStakes.add(msg.value);
-        emit Update(info.stakes, accQKCPershare, totalStakes);
     }
 
     function withdrawStakes(uint256 amount) public {
@@ -122,10 +119,7 @@ contract RootChainStakingPool {
         StakerInfo storage info = stakerInfo[msg.sender];
         assert(stakers[info.arrPos] == msg.sender);
         uint256 pending = info.stakes.mul(accQKCPershare).div(1e18).sub(info.rewardDebt);
-        emit Update(info.stakes, info.rewardDebt, totalStakes);
         info.stakes = info.stakes.add(pending);
-        emit Update(info.stakes, pending, accQKCPershare);
-
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         require(
             info.stakes.sub(amount) == 0 || info.stakes.sub(amount) >= minStakes,
@@ -231,6 +225,7 @@ contract RootChainStakingPool {
             accQKCPershare = accQKCPershare.add(stakerPayout.mul(1e18).div(totalStakes));
             totalPaid = stakerPayout;
         }
+
         totalStakes = totalStakes.add(totalPaid);
         uint256 totalFee = dividend.sub(totalPaid);
         uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
