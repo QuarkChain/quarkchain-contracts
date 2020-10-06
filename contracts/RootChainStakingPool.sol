@@ -13,15 +13,14 @@ contract RootChainStakingPool {
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
         // We do some fancy math here. Basically, any point in time, the amount of QKC
-        // entitled to a user but is pending to be distributed is:
+        // entitled to a staker but is pending to be distributed is:
         //
-        //   pending reward = (user.amount * accQKCPerShare) - user.rewardDebt
+        //   pending reward = (staker.stakes * accQKCPerShare) - staker.rewardDebt
         //
-        // Whenever a user deposits or withdraws stakes to the StakingPool. Here's what happens:
+        // Whenever a staker deposits or withdraws stakes to the RootChainStakingPool. Here's what happens:
         //   1. The pool's `accQKCPerShare` gets updated.
-        //   2. User receives the pending reward sent to his/her address.
-        //   3. User's `amount` gets updated.
-        //   4. User's `rewardDebt` gets updated.
+        //   2. Staker's `amount` gets updated.
+        //   3. Staker's `rewardDebt` gets updated.
     }
 
     uint256 constant MAX_BP = 10000;
@@ -227,7 +226,7 @@ contract RootChainStakingPool {
         uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
-        // Update accPershare
+        // Update accQKCPershare
         if (totalStakes != 0) {
             accQKCPershare = accQKCPershare.add(stakerPayout.mul(1e18).div(totalStakes));
             totalPaid = stakerPayout;
