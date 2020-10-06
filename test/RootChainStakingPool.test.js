@@ -207,9 +207,9 @@ contract('RootChainStakingPool', async (accounts) => {
     assert.equal(stakerInfo[2], toWei(10.8));
     // No new mining rewards, accQKCPershare is still 0.9.
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
-    assert.equal(stakes, toWei(12 + 12 * 0.9 - 10.8));
+    assert.equal(stakes, toWei((12 + (12 * 0.9)) - 10.8));
     stakes = await pool.calculateStakesWithDividend(newStaker);
-    assert.equal(stakes, toWei(20 + 20 * 0.9 - 10));
+    assert.equal(stakes, toWei((20 + (20 * 0.9)) - 10));
     minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(10));
     minerReward = await pool.estimateMinerReward();
