@@ -132,8 +132,8 @@ contract RootChainStakingPool {
             info.stakes.sub(amount) == 0 || info.stakes.sub(amount) >= minStakes,
             "Should satisfy minimum stakes."
         );
-        info.rewardDebt = info.stakes.mul(accQKCPershare).div(1e18);
         info.stakes = info.stakes.sub(amount);
+        info.rewardDebt = info.stakes.mul(accQKCPershare).div(1e18);
         totalStakes = totalStakes.sub(amount);
 
         msg.sender.transfer(amount);
