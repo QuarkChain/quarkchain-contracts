@@ -29,7 +29,6 @@ contract RootChainStakingPool {
     uint256 public minStakes;
     string  public adminContactInfo;
     uint256 public totalStakes;
-    uint256 public maxStakers;
     uint256 public accQKCPershare;
     uint256 public size;
 
@@ -51,8 +50,7 @@ contract RootChainStakingPool {
         address _poolMaintainer,
         uint256 _minStakes,
         uint256 _minerFeeRateBp,
-        uint256 _poolMaintainerFeeRateBp,
-        uint256 _maxStakers
+        uint256 _poolMaintainerFeeRateBp
     )
         public
     {
@@ -73,7 +71,6 @@ contract RootChainStakingPool {
         minStakes = _minStakes;
         minerFeeRateBp = _minerFeeRateBp;
         poolMaintainerFeeRateBp = _poolMaintainerFeeRateBp;
-        maxStakers = _maxStakers;
     }
 
     modifier onlyMiner() {

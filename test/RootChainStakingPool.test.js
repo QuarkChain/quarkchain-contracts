@@ -33,7 +33,6 @@ contract('RootChainStakingPool', async (accounts) => {
   const minerFeeRateBp = 5000;
   // None goes to maintainer.
   const poolMaintainerFeeRateBp = 0;
-  const maxStakers = 16;
   const minStakes = toWei(1);
 
   beforeEach(async () => {
@@ -46,7 +45,6 @@ contract('RootChainStakingPool', async (accounts) => {
       minStakes,
       minerFeeRateBp,
       poolMaintainerFeeRateBp,
-      maxStakers,
     );
   });
 
@@ -251,7 +249,7 @@ contract('RootChainStakingPool', async (accounts) => {
   it('should handle maintainer fee correctly', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await RootChainStakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers);
+    pool = await RootChainStakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250);
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     await forceSend(pool.address, toWei(8), treasury);
     // Stakes should be calculated correctly.
@@ -276,7 +274,7 @@ contract('RootChainStakingPool', async (accounts) => {
   it('should handle no staker case with pool maintainer', async () => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
-    pool = await RootChainStakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250, maxStakers);
+    pool = await RootChainStakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250);
 
     await forceSend(pool.address, toWei(10), treasury);
     // Miner should take 50/(50+12.5) * 10 = 8.
