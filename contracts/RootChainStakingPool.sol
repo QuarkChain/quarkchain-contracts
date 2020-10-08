@@ -9,7 +9,6 @@ contract RootChainStakingPool {
 
     struct StakerInfo {
         uint256 stakes;
-        uint256 arrPos;
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
         // We do some fancy math here. Basically, any point in time, the amount of QKC
@@ -26,13 +25,13 @@ contract RootChainStakingPool {
     uint256 constant MAX_BP = 10000;
 
     mapping (address => StakerInfo) public stakerInfo;
-    address[] public stakers;
     address public admin;
     uint256 public minStakes;
     string  public adminContactInfo;
     uint256 public totalStakes;
     uint256 public maxStakers;
     uint256 public accQKCPershare;
+    uint256 public size;
 
     // Miner fee rate in basis point.
     address public miner;
@@ -93,7 +92,7 @@ contract RootChainStakingPool {
     }
 
     function poolSize() public view returns (uint256) {
-        return stakers.length;
+        return size;
     }
 
     // Add stakes
@@ -103,9 +102,7 @@ contract RootChainStakingPool {
         // New staker
         if (info.stakes == 0) {
             require(msg.value >= minStakes, "Invalid stakes.");
-            require(stakers.length < maxStakers, "Too many stakers.");
-            info.arrPos = stakers.length;
-            stakers.push(msg.sender);
+            size = size.add(1);
         }
         uint256 pending = info.stakes.mul(accQKCPershare).div(1e18).sub(info.rewardDebt);
         info.stakes = info.stakes.add(pending).add(msg.value);
@@ -117,7 +114,6 @@ contract RootChainStakingPool {
         require(amount > 0, "Invalid withdrawal.");
         updateStakingPool();
         StakerInfo storage info = stakerInfo[msg.sender];
-        assert(stakers[info.arrPos] == msg.sender);
         uint256 pending = info.stakes.mul(accQKCPershare).div(1e18).sub(info.rewardDebt);
         info.stakes = info.stakes.add(pending);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
@@ -132,9 +128,7 @@ contract RootChainStakingPool {
         msg.sender.transfer(amount);
 
         if (info.stakes == 0) {
-            stakerInfo[stakers[stakers.length.sub(1)]].arrPos = info.arrPos;
-            stakers[info.arrPos] = stakers[stakers.length.sub(1)];
-            stakers.length = stakers.length.sub(1);
+            size = size.sub(1);
             delete stakerInfo[msg.sender];
         }
     }
@@ -200,13 +194,13 @@ contract RootChainStakingPool {
 
     function estimateMinerReward() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance).mul(minerFeeRateBp).div(
-            stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
+            size > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return minerReward.add(dividend);
     }
 
     function estimatePoolMaintainerFee() public view returns (uint256) {
         uint256 dividend = getDividend(address(this).balance).mul(poolMaintainerFeeRateBp).div(
-            stakers.length > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
+            size > 0 ? MAX_BP : minerFeeRateBp + poolMaintainerFeeRateBp);
         return poolMaintainerFee.add(dividend);
     }
 

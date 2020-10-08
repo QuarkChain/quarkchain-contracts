@@ -64,7 +64,7 @@ contract('RootChainStakingPool', async (accounts) => {
     await pool.sendTransaction(txGen(accounts[0], toWei(1)));
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(1));
-    assert.equal(stakerInfo[2], 0);
+    assert.equal(stakerInfo[1], 0);
 
     await pool.withdrawStakes(toWei(0.1)).should.be.rejectedWith(revertError);
     await pool.withdrawStakes(toWei(1));
@@ -76,12 +76,9 @@ contract('RootChainStakingPool', async (accounts) => {
     assert.equal(minerReward, 0);
     let poolSize = await pool.poolSize();
     assert.equal(poolSize, 1);
-    const staker = await pool.stakers(0);
-    assert.equal(staker, accounts[0]);
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(42));
     assert.equal(stakerInfo[1], 0);
-    assert.equal(stakerInfo[2], 0);
     let totalStakes = await pool.totalStakes();
     assert.equal(totalStakes, toWei(42));
     let stakesWithDividends = await pool.calculateStakesWithDividend(accounts[0]);
@@ -134,7 +131,7 @@ contract('RootChainStakingPool', async (accounts) => {
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     let stakes = stakerInfo[0];
     assert.equal(stakes, toWei(42));
-    assert.equal(stakerInfo[2], 0);
+    assert.equal(stakerInfo[1], 0);
     // Stakers can calculate their stakes with dividends.
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, '45999999999999999996');
@@ -170,7 +167,7 @@ contract('RootChainStakingPool', async (accounts) => {
     let stakerInfo = await pool.stakerInfo(accounts[0]);
     let stakes = stakerInfo[0];
     assert.equal(stakes, toWei(10));
-    assert.equal(stakerInfo[2], 0);
+    assert.equal(stakerInfo[1], 0);
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, toWei(15));
     // 2. Check new staker.
@@ -178,7 +175,7 @@ contract('RootChainStakingPool', async (accounts) => {
     stakes = stakerInfo[0];
     assert.equal(stakes, toWei(20));
     // Update accQKCPershare = 0 + 5 / 10 = 0.5, new staker rewardDebt = 20 * 0.5 = 10
-    assert.equal(stakerInfo[2], toWei(10));
+    assert.equal(stakerInfo[1], toWei(10));
     stakes = await pool.calculateStakesWithDividend(newStaker);
     assert.equal(stakes, toWei(20));
     // 3. Check miner.
@@ -195,7 +192,7 @@ contract('RootChainStakingPool', async (accounts) => {
     stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(5));
     // No new mining rewards, accQKCPershare is still 0.5, prev staker rewardDebt = 5 * 0.5 = 2.5
-    assert.equal(stakerInfo[2], toWei(2.5));
+    assert.equal(stakerInfo[1], toWei(2.5));
     // After a new round of mining rewards, all stakers and miner should have dividends.
     await forceSend(pool.address, toWei(20), treasury);
     // Prev staker deposits extra 5 QKC, update accQKCPershare = 0.5 + 10 / 25 = 0.9
@@ -204,7 +201,7 @@ contract('RootChainStakingPool', async (accounts) => {
     // Prev staker total stakes = 5 * 0.9 - 2.5 + 5 + 5 = 12
     assert.equal(stakerInfo[0], toWei(12));
     // Update prev staker rewardDebt = 12 * 0.9 = 10.8
-    assert.equal(stakerInfo[2], toWei(10.8));
+    assert.equal(stakerInfo[1], toWei(10.8));
     // No new mining rewards, accQKCPershare is still 0.9.
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, toWei((12 + (12 * 0.9)) - 10.8));
