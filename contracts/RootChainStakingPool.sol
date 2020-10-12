@@ -2,7 +2,9 @@ pragma solidity >0.4.99 <0.6.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
+/*
+ * This contract implements an algorithm to dynamically calculate staker's interest in O(1).
+ */
 contract RootChainStakingPool {
 
     using SafeMath for uint256;
@@ -59,9 +61,6 @@ contract RootChainStakingPool {
         require(
             _minerFeeRateBp + _poolMaintainerFeeRateBp <= MAX_BP,
             "Fee rate should be in basis point."
-        );
-        require(
-            accQKCPershare == 0, "miner may only be initialized once"
         );
         miner = _miner;
         minerContactInfo = _minerContactInfo;
