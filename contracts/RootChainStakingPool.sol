@@ -2,6 +2,7 @@ pragma solidity >0.4.99 <0.6.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 /*
  * This contract implements an algorithm to dynamically calculate staker's interest in O(1).
  */
