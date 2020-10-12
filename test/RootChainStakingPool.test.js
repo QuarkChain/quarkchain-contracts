@@ -100,7 +100,6 @@ contract('RootChainStakingPool', async (accounts) => {
     assert.equal(totalStakes, toWei(2));
     let poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, toWei(2));
-    const stakerInfo = await pool.stakerInfo(accounts[0]);
     let stakesWithDividends = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakesWithDividends, toWei(2));
     // Failure.
@@ -129,7 +128,6 @@ contract('RootChainStakingPool', async (accounts) => {
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     let stakes = stakerInfo[0];
     assert.equal(stakes, toWei(42));
-    assert.equal(stakerInfo[1], 0);
     // Stakers can calculate their stakes with dividends.
     stakes = await pool.calculateStakesWithDividend(accounts[0]);
     assert.equal(stakes, '45999999999999999996');

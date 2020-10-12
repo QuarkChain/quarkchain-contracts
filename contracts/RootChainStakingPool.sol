@@ -29,8 +29,8 @@ contract RootChainStakingPool {
     uint256 public minStakes;
     string  public adminContactInfo;
     uint256 public totalStakes;
-    uint256 public accQKCPershare;
-    uint256 public size;
+    uint256 public accQKCPershare; // Accumulated QKCs per share, times 1e18. See below
+    uint256 private size; // pool size.
 
     // Miner fee rate in basis point.
     address public miner;
@@ -101,8 +101,11 @@ contract RootChainStakingPool {
             require(msg.value >= minStakes, "Invalid stakes.");
             size = size.add(1);
         }
+        // Calculate pending interest over two operations.
         uint256 pending = info.stakes.mul(accQKCPershare).div(1e18).sub(info.rewardDebt);
+        // Updated staker'stakes, which is current stakes + pending interest + new stakes.
         info.stakes = info.stakes.add(pending).add(msg.value);
+        // Update staker's rewardDebt based on the new stakes.
         info.rewardDebt = info.stakes.mul(accQKCPershare).div(1e18);
         totalStakes = totalStakes.add(msg.value);
     }
@@ -112,6 +115,7 @@ contract RootChainStakingPool {
         updateStakingPool();
         StakerInfo storage info = stakerInfo[msg.sender];
         uint256 pending = info.stakes.mul(accQKCPershare).div(1e18).sub(info.rewardDebt);
+        // Updated staker'stakes, which is the current stakes + pending interest.
         info.stakes = info.stakes.add(pending);
         require(info.stakes >= amount, "Should have enough stakes to withdraw.");
         require(
@@ -183,6 +187,7 @@ contract RootChainStakingPool {
         uint256 dividend = getDividend(address(this).balance);
         uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
+        // Calculate the latest accQKCPershare, so that staker can know his/her stakes until now.
         uint256 tempAccQKCPershare = accQKCPershare.add(stakerPayout.mul(1e18).div(totalStakes));
         StakerInfo storage info = stakerInfo[staker];
         uint256 pending = info.stakes.mul(tempAccQKCPershare).div(1e18).sub(info.rewardDebt);
@@ -211,9 +216,18 @@ contract RootChainStakingPool {
         uint256 feeRateBp = minerFeeRateBp + poolMaintainerFeeRateBp;
         uint256 stakerPayout = dividend.mul(MAX_BP - feeRateBp).div(MAX_BP);
         uint256 totalPaid = 0;
-        // Update accQKCPershare
+
+        // Explain the theory of accQKCPershare.
+        // For a period of time, the interest of a single staker got is his/her percentage of the total interest,
+        // which can be expressed as (periodInterest * staker.stakes) / totalStakes.
+        // Extract periodInterest / totalStakes named as QKCPershare.
+        // Extend it to overall, the total interest of a single staker got is the sum of the interest of each period.
+        // which can be expressed as (sum of periodInterest * staker.stakes) / totalStakes,
+        // also equal to sum of QKCPershare * staker.stakes.
+        // Extract sum of QKCPershare named as accQKCPershare.
         if (totalStakes != 0) {
             accQKCPershare = accQKCPershare.add(stakerPayout.mul(1e18).div(totalStakes));
+            // If the pool has staker, the periodInterest will be automatically added to totalStakes.
             totalPaid = stakerPayout;
         }
 
