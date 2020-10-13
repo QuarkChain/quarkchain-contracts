@@ -80,8 +80,7 @@ contract RootChainStakingPool {
         return size;
     }
 
-    // Add stakes
-    function () external payable {
+    function addStakes() public payable {
         updateStakingPool();
         StakerInfo storage info = stakerInfo[msg.sender];
         // New staker
@@ -118,6 +117,7 @@ contract RootChainStakingPool {
 
     function withdrawMinerReward() public onlyMiner {
         updateStakingPool();
+        require(minerReward > 0, "No miner reward to withdraw");
         uint256 toWithdraw = minerReward;
         minerReward = 0;
         msg.sender.transfer(toWithdraw);
@@ -125,6 +125,7 @@ contract RootChainStakingPool {
 
     function transferMaintainerFee() public onlyPoolMaintainer {
         updateStakingPool();
+        require(poolMaintainerFee > 0, "No maintainer fee");
         uint256 toTransfer = poolMaintainerFee;
         poolMaintainerFee = 0;
         msg.sender.transfer(toTransfer);
@@ -200,16 +201,16 @@ contract RootChainStakingPool {
 
         // TODO: calculate accQKCPershare and totalPaid
         totalStakes = totalStakes.add(totalPaid);
+        assert(balance >= totalStakes);
 
         uint256 totalFee = dividend.sub(totalPaid);
         uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
         uint256 feeForMaintainer = totalFee.sub(feeForMiner);
         poolMaintainerFee = poolMaintainerFee.add(feeForMaintainer);
         minerReward = minerReward.add(feeForMiner);
-        assert(balance >= totalStakes);
     }
 
-    function getDividend(uint256 balance) private view returns (uint256) {
+    function getDividend(uint256 balance) public view returns (uint256) {
         uint256 recordedAmount = totalStakes.add(minerReward).add(poolMaintainerFee);
         require(balance >= recordedAmount, "Should have enough balance.");
         return balance.sub(recordedAmount);
