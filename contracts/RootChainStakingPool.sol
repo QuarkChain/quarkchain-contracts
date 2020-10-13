@@ -232,6 +232,7 @@ contract RootChainStakingPool {
         }
 
         totalStakes = totalStakes.add(totalPaid);
+        
         uint256 totalFee = dividend.sub(totalPaid);
         uint256 feeForMiner = totalFee.mul(minerFeeRateBp).div(feeRateBp);
         uint256 feeForMaintainer = totalFee.sub(feeForMiner);
