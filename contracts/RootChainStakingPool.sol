@@ -123,6 +123,7 @@ contract RootChainStakingPool {
         );
         info.stakes = info.stakes.sub(amount);
         info.rewardDebt = info.stakes.mul(accQKCPershare).div(1e18);
+
         totalStakes = totalStakes.sub(amount);
 
         msg.sender.transfer(amount);
@@ -231,6 +232,7 @@ contract RootChainStakingPool {
             // If the pool has staker, the periodInterest will be automatically added to totalStakes.
             totalPaid = stakerPayout;
         }
+
         totalStakes = totalStakes.add(totalPaid);
         assert(balance >= totalStakes);
 
