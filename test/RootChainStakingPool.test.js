@@ -56,10 +56,10 @@ contract('RootChainStakingPool', async (accounts) => {
     const min = await pool.minStakes();
     assert.equal(min, toWei(1));
 
-    await pool.sendTransaction(txGen(accounts[0], toWei(0.1)))
+    await pool.addStakes({ from: accounts[0], value: toWei(0.1) })
       .should.be.rejectedWith(revertError);
 
-    await pool.sendTransaction(txGen(accounts[0], toWei(1)));
+    await pool.addStakes({ from: accounts[0], value: toWei(1) });
     const stakerInfo = await pool.stakerInfo(accounts[0]);
     assert.equal(stakerInfo[0], toWei(1));
     assert.equal(stakerInfo[1], 0);
@@ -69,7 +69,7 @@ contract('RootChainStakingPool', async (accounts) => {
   });
 
   it('should handle adding stakes properly', async () => {
-    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await pool.addStakes({ from: accounts[0], value: toWei(42) });
     const minerReward = await pool.minerReward();
     assert.equal(minerReward, 0);
     let poolSize = await pool.poolSize();
@@ -85,15 +85,15 @@ contract('RootChainStakingPool', async (accounts) => {
     stakesWithDividends = await pool.calculateStakesWithDividend(accounts[5]);
     assert.equal(stakesWithDividends, 0);
 
-    await pool.sendTransaction(txGen(accounts[1], toWei(100)));
+    await pool.addStakes({ from: accounts[1], value: toWei(50) });
     poolSize = await pool.poolSize();
     assert.equal(poolSize, 2);
     totalStakes = await pool.totalStakes();
-    assert.equal(totalStakes, toWei(142));
+    assert.equal(totalStakes, toWei(92));
   });
 
   it('should handle withdrawing stakes properly', async () => {
-    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await pool.addStakes({ from: accounts[0], value: toWei(42) });
     await pool.withdrawStakes(toWei(0)).should.be.rejectedWith(revertError);
     await pool.withdrawStakes(toWei(40));
     let totalStakes = await pool.totalStakes();
@@ -118,7 +118,7 @@ contract('RootChainStakingPool', async (accounts) => {
   });
 
   it('should calculate dividends correctly', async () => {
-    await pool.sendTransaction(txGen(accounts[0], toWei(42)));
+    await pool.addStakes({ from: accounts[0], value: toWei(42) });
     await forceSend(pool.address, toWei(8), treasury);
     let poolBalance = await web3.eth.getBalance(pool.address);
     assert.equal(poolBalance, toWei(50));
@@ -151,12 +151,12 @@ contract('RootChainStakingPool', async (accounts) => {
   });
 
   it('should accept new stakers', async () => {
-    await pool.sendTransaction(txGen(accounts[0], toWei(10)));
+    await pool.addStakes({ from: accounts[0], value: toWei(10) });
     await forceSend(pool.address, toWei(10), treasury);
     // Now the staker should have 15 QKC and the miner has 5.
     // A new staker comes in.
     const newStaker = accounts[2];
-    await pool.sendTransaction(txGen(newStaker, toWei(20)));
+    await pool.addStakes({ from: newStaker, value: toWei(20) });
     // Shouldn't affect the outcome: prev staker 15 QKC, miner 5 and new staker 20.
     // 1. Check prev staker.
     // Internal state not updated but should be able to withdraw stakes + dividends.
@@ -192,7 +192,7 @@ contract('RootChainStakingPool', async (accounts) => {
     // After a new round of mining rewards, all stakers and miner should have dividends.
     await forceSend(pool.address, toWei(20), treasury);
     // Prev staker deposits extra 5 QKC, update accQKCPershare = 0.5 + 10 / 25 = 0.9
-    await pool.sendTransaction(txGen(accounts[0], toWei(5)));
+    await pool.addStakes({ from: accounts[0], value: toWei(5) });
     stakerInfo = await pool.stakerInfo(accounts[0]);
     // Prev staker total stakes = 5 * 0.9 - 2.5 + 5 + 5 = 12
     assert.equal(stakerInfo[0], toWei(12));
@@ -216,7 +216,7 @@ contract('RootChainStakingPool', async (accounts) => {
     minerReward = await pool.estimateMinerReward();
     assert.equal(minerReward, toWei(10));
     // Now adding a new staker, while miner's fee shouldn't be affected.
-    await pool.sendTransaction(txGen(accounts[0], toWei(10)));
+    await pool.addStakes({ from: accounts[0], value: toWei(10) });
     minerReward = await pool.minerReward();
     assert.equal(minerReward, toWei(10));
     minerReward = await pool.estimateMinerReward();
@@ -248,7 +248,7 @@ contract('RootChainStakingPool', async (accounts) => {
     // Start a new pool where the pool takes 12.5% while the miner takes 50%.
     // eslint-disable-next-line max-len
     pool = await RootChainStakingPool.new(miner, minerContactInfo, admin, adminContactInfo, maintainer, minStakes, minerFeeRateBp, 1250);
-    await pool.sendTransaction(txGen(accounts[0], toWei(1)));
+    await pool.addStakes({ from: accounts[0], value: toWei(1) });
     await forceSend(pool.address, toWei(8), treasury);
     // Stakes should be calculated correctly.
     const stakes = await pool.calculateStakesWithDividend(accounts[0]);
