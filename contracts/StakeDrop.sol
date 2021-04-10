@@ -2,9 +2,10 @@ pragma solidity >0.4.99 <0.6.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract StakeDrop is ReentrancyGuard {
+contract StakeDrop is ReentrancyGuard, Ownable {
 
     using SafeMath for uint256;
 
@@ -22,6 +23,19 @@ contract StakeDrop is ReentrancyGuard {
         require(_end < _open, "end >= open");
 
         limit = _limit;
+        start = _start;
+        end = _end;
+        open = _open;
+    }
+
+    function adjustLimit(uint256 _newLimit) external onlyOwner {
+        limit = _newLimit;
+    }
+
+    function updateTime(uint256 _start, uint256 _end, uint256 _open) external onlyOwner {
+        require(_start < _end, "start >= end");
+        require(_end < _open, "end >= open");
+
         start = _start;
         end = _end;
         open = _open;
