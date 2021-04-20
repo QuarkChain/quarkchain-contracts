@@ -55,8 +55,10 @@ contract StakeDrop is ReentrancyGuard, Ownable {
     function withdraw() external nonReentrant {
         require (block.timestamp >= open, "not yet open");
 
-        total = total.sub(staked[msg.sender]);
-        msg.sender.transfer(staked[msg.sender]);
+        uint256 amount = staked[msg.sender];
+        total = total.sub(amount);
         staked[msg.sender] = 0;
+
+        msg.sender.transfer(amount);
     }
 }
